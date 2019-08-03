@@ -1,0 +1,49 @@
+package authentication
+
+import (
+	"context"
+	"github.com/breathbath/go_utils/utils/io"
+	"net/http"
+)
+
+type AuthHandlerProvider struct {
+	jwtManager *JwtManager
+}
+
+func NewAuthHandlerProvider(jwtManager *JwtManager) *AuthHandlerProvider {
+	return &AuthHandlerProvider{jwtManager: jwtManager}
+}
+
+func (ahp *AuthHandlerProvider) GetHandlerFunc() func(rw http.ResponseWriter, req *http.Request, next http.HandlerFunc) {
+	return ahp.AuthenticateClient
+}
+
+func (ahp *AuthHandlerProvider) AuthenticateClient(rw http.ResponseWriter, req *http.Request, next http.HandlerFunc) {
+	rawTokens, ok := req.Header["Authorization"]
+	if !ok {
+		next(rw, req)
+		return
+	}
+
+	rawToken := rawTokens[0]
+	if rawToken == "" {
+		next(rw, req)
+		return
+	}
+
+	token, err := ahp.jwtManager.ParseToken(rawToken)
+
+	if err != nil {
+		io.OutputError(err, "Auth handler", "Invalid token: " + rawToken)
+		next(rw, req)
+		return
+	}
+
+	if !token.Valid {
+		next(rw, req)
+		return
+	}
+
+	ctx := context.WithValue(req.Context(), "token", token)
+	next(rw, req.WithContext(ctx))
+}
