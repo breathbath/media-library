@@ -68,6 +68,7 @@ func extractSizes(path string) (width, height int) {
 }
 
 func parseImagePath(path string) ImagePath {
+	path = strings.Trim(path, "/")
 	pathItems := strings.Split(path, "/")
 	if len(pathItems) < 2 {
 		return ImagePath{isValid: false}
@@ -95,7 +96,7 @@ func parseImagePath(path string) ImagePath {
 	}
 
 	imageName, imageExt := parseImageName(pathItems[2])
-	if imageName != "" || imageExt != "" {
+	if imageName == "" || imageExt == "" {
 		return ImagePath{isValid: false}
 	}
 

@@ -17,15 +17,15 @@ func NewServerRunner() ServerRunner {
 	return ServerRunner{}
 }
 
-func (sr ServerRunner) Run() error {
+func (sr ServerRunner) Run() (*http.Server, error) {
 	host, err := env.ReadEnvOrError("HOST")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	assetsPath, err := env.ReadEnvOrError("ASSETS_PATH")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	urlPrefix := env.ReadEnv("URL_PREFIX", "/media/images/")
@@ -35,7 +35,7 @@ func (sr ServerRunner) Run() error {
 
 	jwtManager, err := authentication.NewJwtManager()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	authHandler := authentication.NewAuthHandlerProvider(jwtManager)
 
@@ -54,6 +54,15 @@ func (sr ServerRunner) Run() error {
 
 	io.OutputInfo("", "Starting server at %s behind official host %s", host, host)
 
-	return http.ListenAndServe(host, serverHandler)
+	srv := &http.Server{Addr: host, Handler: serverHandler}
+
+	go func() {
+		// returns ErrServerClosed on graceful close
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			io.OutputError(err, "", "")
+		}
+	}()
+
+	return srv, nil
 }
 

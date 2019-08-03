@@ -8,12 +8,11 @@ import (
 )
 
 type fileSystemManager struct {
-	fs         http.FileSystem
 	assetsPath string
 }
 
 func NewFileServer(assetsPath string) http.Handler {
-	return http.FileServer(fileSystemManager{http.Dir(assetsPath), assetsPath})
+	return http.FileServer(fileSystemManager{assetsPath})
 }
 
 func (nfs fileSystemManager) Open(path string) (http.File, error) {
@@ -34,19 +33,15 @@ func (nfs fileSystemManager) createNonExistsError(path string) *os.PathError {
 }
 
 func (nfs fileSystemManager) handleResizedImage(imagePath ImagePath) (http.File, error) {
-	resizedFolder := filepath.Join(
+ 	resizedFolder := filepath.Join(
 		nfs.assetsPath,
 		"cache",
-		"resized",
+		"resized_image",
 		imagePath.folderName,
 		imagePath.imageName,
 	)
 
-	resizedImage := filepath.Join(
-		imagePath.rawResizedFolder,
-		".",
-		imagePath.imageExt,
-	)
+	resizedImage := imagePath.rawResizedFolder + "." + imagePath.imageExt
 
 	resizedPath := filepath.Join(resizedFolder, resizedImage)
 
@@ -64,7 +59,7 @@ func (nfs fileSystemManager) handleResizedImage(imagePath ImagePath) (http.File,
 		return nil, nfs.createNonExistsError(resizedPath)
 	}
 
-	f, err := nfs.fs.Open(resizedPath)
+	f, err := os.Open(resizedPath)
 	if err != nil {
 		return nil, err
 	}
@@ -92,14 +87,14 @@ func (nfs fileSystemManager) generateResizedImage(resizedFolder, resizedImageNam
 		return nil, err
 	}
 
-	src = imaging.Resize(src, imagePath.width, imagePath.height, imaging.Lanczos)
+	src = imaging.Fill(src, imagePath.width, imagePath.height, imaging.Center, imaging.Lanczos)
 
 	err = imaging.Save(src, resizedPath)
 	if err != nil {
 		return nil, err
 	}
 
-	return nfs.fs.Open(resizedPath)
+	return os.Open(resizedPath)
 }
 
 func (nfs fileSystemManager) handleNonResizedImage(imagePath ImagePath) (http.File, error) {
@@ -117,7 +112,7 @@ func (nfs fileSystemManager) handleNonResizedImage(imagePath ImagePath) (http.Fi
 		return nil, nfs.createNonExistsError(fullImagePath)
 	}
 
-	f, err := nfs.fs.Open(fullImagePath)
+	f, err := os.Open(fullImagePath)
 	if err != nil {
 		return nil, err
 	}

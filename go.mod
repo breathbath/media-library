@@ -6,7 +6,7 @@ require (
 	github.com/breathbath/go_utils v0.0.0-20190211130746-62379d8df36c
 	github.com/codegangsta/negroni v1.0.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/disintegration/imaging v1.6.0 // indirect
+	github.com/disintegration/imaging v1.6.0
 	github.com/ericlagergren/decimal v0.0.0-20190204014639-71cf34b7c2b5 // indirect
 	github.com/gorilla/mux v1.7.0
 	github.com/gorilla/sessions v1.1.3
