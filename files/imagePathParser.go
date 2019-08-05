@@ -16,7 +16,7 @@ func isFolderValid(folderName string) bool {
 }
 
 func parseImageName(imageFile string) (imageName, imageExt string) {
-	r := regexp.MustCompile(fmt.Sprintf(`^(\w+)\.(%s)$`, SUPPORTED_IMAGE_FORMATS))
+	r := regexp.MustCompile(fmt.Sprintf(`^([\w\-_]+)\.(%s)$`, SUPPORTED_IMAGE_FORMATS))
 	matches := r.FindStringSubmatch(imageFile)
 	if len(matches) == 0 {
 		return
@@ -67,7 +67,7 @@ func extractSizes(path string) (width, height int) {
 	return
 }
 
-func parseImagePath(path string) ImagePath {
+func parseImagePath(path, assetsPath string) ImagePath {
 	path = strings.Trim(path, "/")
 	pathItems := strings.Split(path, "/")
 	if len(pathItems) < 2 {
@@ -77,11 +77,12 @@ func parseImagePath(path string) ImagePath {
 	if len(pathItems) == 2 {
 		isValid := isFolderValid(pathItems[0])
 		if !isValid {
-			return ImagePath{folderName: pathItems[0], isValid: isValid}
+			return ImagePath{isValid: false}
 		}
 
 		imageName, imageExt := parseImageName(pathItems[1])
 		return ImagePath{
+			assetsPath: assetsPath,
 			folderName: pathItems[0],
 			imageFile:  pathItems[1],
 			imageName:  imageName,
@@ -101,6 +102,7 @@ func parseImagePath(path string) ImagePath {
 	}
 
 	imagePath := ImagePath{
+		assetsPath: assetsPath,
 		folderName: pathItems[1],
 		imageFile:  pathItems[2],
 		imageName:  imageName,

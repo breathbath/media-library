@@ -2,8 +2,11 @@ package authentication
 
 import (
 	"context"
+	"github.com/breathbath/go_utils/utils/env"
 	"github.com/breathbath/go_utils/utils/io"
+	"github.com/dgrijalva/jwt-go"
 	"net/http"
+	"strings"
 )
 
 type AuthHandlerProvider struct {
@@ -31,6 +34,8 @@ func (ahp *AuthHandlerProvider) AuthenticateClient(rw http.ResponseWriter, req *
 		return
 	}
 
+	rawToken = strings.Replace(rawToken, "Bearer ", "", -1)
+
 	token, err := ahp.jwtManager.ParseToken(rawToken)
 
 	if err != nil {
@@ -39,7 +44,7 @@ func (ahp *AuthHandlerProvider) AuthenticateClient(rw http.ResponseWriter, req *
 		return
 	}
 
-	if !token.Valid {
+	if !token.Valid || token.Claims.(jwt.MapClaims)["iss"].(string) != env.ReadEnv("TOKEN_ISSUER", "") {
 		next(rw, req)
 		return
 	}

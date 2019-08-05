@@ -14,8 +14,7 @@ type JwtManager struct {
 }
 
 const (
-	tokenExpireSecondsAfterLogout = 3600
-	tokenAudience                 = "token_blug"
+	tokenAudience = "media_service"
 )
 
 func NewJwtManager() (*JwtManager, error) {
@@ -29,21 +28,21 @@ func NewJwtManager() (*JwtManager, error) {
 		return nil, err
 	}
 
-	tokenDuration := env.ReadEnvInt("TOKEN_DURATION_HOURS", 72)
+	tokenDuration := env.ReadEnvInt("TOKEN_DURATION_DAYS", 30)
 
 	return &JwtManager{
 		secret:        secret,
 		issuer:        issuer,
-		tokenDuration: time.Hour * time.Duration(tokenDuration),
+		tokenDuration: time.Hour * 24 * time.Duration(tokenDuration),
 	}, nil
 }
 
-func (jwtm *JwtManager) GenerateToken(login string) (string, error) {
+func (jwtm *JwtManager) GenerateToken(appName string) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
 	token.Claims = jwt.MapClaims{
 		"exp": time.Now().UTC().Add(jwtm.tokenDuration).Unix(),
 		"iat": time.Now().UTC().Unix(),
-		"sub": login,
+		"sub": appName,
 		"iss": jwtm.issuer,
 		"aud": tokenAudience,
 	}
@@ -52,17 +51,6 @@ func (jwtm *JwtManager) GenerateToken(login string) (string, error) {
 		return "", err
 	}
 	return tokenString, nil
-}
-
-func (jwtm *JwtManager) getTokenRemainingValidity(timestamp interface{}) time.Duration {
-	if validity, ok := timestamp.(float64); ok {
-		tm := time.Unix(int64(validity), 0)
-		remainer := tm.Sub(time.Now().UTC())
-		if remainer > 0 {
-			return time.Second * time.Duration(remainer.Seconds()+tokenExpireSecondsAfterLogout)
-		}
-	}
-	return time.Second * time.Duration(tokenExpireSecondsAfterLogout)
 }
 
 func (jwtm *JwtManager) ParseToken(rawToken string) (*jwt.Token, error) {

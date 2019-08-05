@@ -8,6 +8,7 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"net/http"
+	"strings"
 )
 
 type ServerRunner struct {
@@ -47,8 +48,11 @@ func (sr ServerRunner) Run() (*http.Server, error) {
 
 	router := mux.NewRouter()
 
-	fileServerHandler := files.NewFileServer(assetsPath)
-	router.PathPrefix(urlPrefix).Handler(http.StripPrefix(urlPrefix, fileServerHandler))
+	fileSystemManager := files.NewFileSystemManager(assetsPath)
+	fileServerHandler := http.FileServer(fileSystemManager)
+	router.PathPrefix(urlPrefix).Handler(http.StripPrefix(urlPrefix, fileServerHandler)).Methods(http.MethodGet)
+	router.HandleFunc(strings.TrimRight(urlPrefix, "/") + "/{folder}/{image}", fileSystemManager.HandleDelete).Methods(http.MethodDelete)
+	router.HandleFunc(urlPrefix, fileSystemManager.HandlePost).Methods(http.MethodPost)
 
 	serverHandler.UseHandler(router)
 
