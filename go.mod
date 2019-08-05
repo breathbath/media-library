@@ -10,7 +10,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/disintegration/imaging v1.6.0
 	github.com/ericlagergren/decimal v0.0.0-20190204014639-71cf34b7c2b5 // indirect
-	github.com/gabriel-vasile/mimetype v0.3.16 // indirect
+	github.com/gabriel-vasile/mimetype v0.3.16
 	github.com/gorilla/mux v1.7.0
 	github.com/gorilla/sessions v1.1.3
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect

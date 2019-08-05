@@ -1,0 +1,102 @@
+version: '3.3'
+volumes:
+  gotranslator_source_volume:
+  goblog_source_volume:
+services:
+  media:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+    container_name: media
+    env_file:
+      - .env
+    volumes:
+      - ./docker/data:/media/data
+    ports:
+      - 127.0.0.1:3308:3306
+  blog_db:
+    image: mysql:latest
+    container_name: blog_db
+    env_file:
+      - ./DockerInit/mysql/blog.env
+    volumes:
+      - ./DockerInit/mysql/myRoot.cnf:/etc/mysql/conf.d/my.cnf
+      - ./DockerData/mysql_blog:/var/lib/mysql
+      - ./DockerInit/mysql/initBlog.sql:/docker-entrypoint-initdb.d/initBlog.sql
+      - ./goblog/backend_src/db/dump.sql:/docker-entrypoint-initdb.d/blog.sql
+    ports:
+      - 127.0.0.1:3309:3306
+  redis:
+    image: redis:alpine
+    container_name: redis
+    volumes:
+      - ./DockerData/redis:/data
+      - ./DockerInit/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    entrypoint: redis-server --appendonly yes
+  translator_builder:
+    container_name: translator_builder
+    image: golang:stretch
+    env_file:
+      - "./DockerInit/gotranslator/${ENV}.env"
+    volumes:
+      - ./DockerData/gomod:/go/pkg/mod
+      - ./gotranslator:/home/breathbath/gotranslator
+      - gotranslator_source_volume:/home/breathbath/gotranslator/bin
+    environment:
+      - GOPATH=/go
+    working_dir: /home/breathbath/gotranslator
+  blog_builder:
+    container_name: blog_builder
+    image: golang:stretch
+    env_file:
+      - "./DockerInit/blog/.env"
+    volumes:
+      - ./DockerData/gomod:/go/pkg/mod
+      - ./goblog:/home/breathbath/goblog
+      - goblog_source_volume:/home/breathbath/goblog/bin
+    environment:
+      - GOPATH=/go
+    working_dir: /home/breathbath/goblog/backend_src
+  blog_migrations:
+    container_name: blog_migrations
+    image: golang:stretch
+    depends_on:
+      - blog_builder
+      - blog_db
+    env_file:
+      - "./DockerInit/blog/.env"
+    volumes:
+      - goblog_source_volume:/home/breathbath/goblog/bin
+  gotranslator:
+    container_name: gotranslator
+    image: golang:stretch
+    depends_on:
+      - translator_builder
+      - translator_db
+      - redis
+    env_file:
+      - "./DockerInit/gotranslator/${ENV}.env"
+    restart: always
+    volumes:
+      - gotranslator_source_volume:/usr/local/bin
+      - ./gotranslator/html_templates:/home/gotranslator/html_templates
+    entrypoint: /usr/local/bin/gotranslator telegram
+  goblog:
+    container_name: goblog
+    image: golang:stretch
+    depends_on:
+      - blog_builder
+      - blog_db
+      - redis
+    env_file:
+      - "./DockerInit/blog/.env"
+    restart: always
+    volumes:
+      - goblog_source_volume:/home/breathbath/goblog/bin
+      - ./goblog/frontend_src/templates:/home/template_source
+      - ./goblog/public_htm:/home/assets
+      - ./DockerData/blog_images:/home/images
+      - ./.key:/home/blogKey:ro
+    entrypoint: /home/breathbath/goblog/bin/blogserver
+    ports:
+      - 127.0.0.1:3000:3000

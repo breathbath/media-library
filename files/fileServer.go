@@ -1,6 +1,7 @@
 package files
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/breathbath/go_utils/utils/env"
 	"github.com/breathbath/go_utils/utils/fs"
@@ -12,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 )
 
@@ -49,6 +51,7 @@ func (nfs FileSystemManager) HandlePost(rw http.ResponseWriter, r *http.Request)
 	}
 
 	imgPath := ImagePath{isValid: false}
+	filesToReturn := make([]string, 0, len(uploadedFiles))
 	for _, uploadedFileHeader := range uploadedFiles {
 		infile, err := uploadedFileHeader.Open()
 		if err != nil {
@@ -69,6 +72,8 @@ func (nfs FileSystemManager) HandlePost(rw http.ResponseWriter, r *http.Request)
 			fileName += "." + ext
 		}
 
+		fileName = nfs.sanitizeImageName(fileName)
+
 		if !imgPath.isValid {
 			imgPath, err = nfs.generateUniqueImagePath(fileName)
 			if err != nil {
@@ -85,6 +90,14 @@ func (nfs FileSystemManager) HandlePost(rw http.ResponseWriter, r *http.Request)
 			return
 		}
 
+		targetDir := imgPath.GetNonResizedFolderPath()
+		err = os.MkdirAll(targetDir, os.ModePerm)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			io.OutputError(err, "", "Failed to create directory '%s' for uploaded files", targetDir)
+			return
+		}
+
 		outfile, err := os.Create(imgPath.GetNonResizedImagePath())
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
@@ -98,7 +111,32 @@ func (nfs FileSystemManager) HandlePost(rw http.ResponseWriter, r *http.Request)
 			io.OutputError(err, "", "Uploaded file copy failure")
 			return
 		}
+
+		filesToReturn = append(filesToReturn, imgPath.folderName+"/"+imgPath.imageFile)
 	}
+
+	resp := struct {
+		FilesToReturn []string `json:"filepathes"`
+	}{
+		FilesToReturn: filesToReturn,
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(rw).Encode(resp)
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		io.OutputError(err, "", "Cannot send json data")
+		return
+	}
+}
+
+func (nfs FileSystemManager) sanitizeImageName(fullName string) string {
+	ext := filepath.Ext(fullName)
+	imageName := fullName[0 : len(fullName)-len(ext)]
+	r := regexp.MustCompile(`[^\w\-_]`)
+	sanitizedImageName := r.ReplaceAllString(imageName, "_")
+
+	return sanitizedImageName + ext
 }
 
 func (nfs FileSystemManager) GetFileContentType(out *os.File) (string, error) {
