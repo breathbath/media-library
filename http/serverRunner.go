@@ -3,8 +3,9 @@ package http
 import (
 	"github.com/breathbath/go_utils/utils/env"
 	"github.com/breathbath/go_utils/utils/io"
+	"github.com/breathbath/media-service/assets"
 	"github.com/breathbath/media-service/authentication"
-	"github.com/breathbath/media-service/files"
+	"github.com/breathbath/media-service/fileSystem"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -48,11 +49,19 @@ func (sr ServerRunner) Run() (*http.Server, error) {
 
 	router := mux.NewRouter()
 
-	fileSystemManager := files.NewFileSystemManager(assetsPath)
+	fileSystemManager := assets.NewImageReadHandler(assetsPath)
 	fileServerHandler := http.FileServer(fileSystemManager)
 	router.PathPrefix(urlPrefix).Handler(http.StripPrefix(urlPrefix, fileServerHandler)).Methods(http.MethodGet)
-	router.HandleFunc(strings.TrimRight(urlPrefix, "/") + "/{folder}/{image}", fileSystemManager.HandleDelete).Methods(http.MethodDelete)
-	router.HandleFunc(urlPrefix, fileSystemManager.HandlePost).Methods(http.MethodPost)
+
+	fileSystemHandler := fileSystem.LocalFileSystemManager{AssetsPath: assetsPath}
+
+	imageDeleteHandler := assets.ImageDeleteHandler{
+		FileSystemManager: fileSystemHandler,
+	}
+	router.HandleFunc(strings.TrimRight(urlPrefix, "/") + "/{folder}/{image}", imageDeleteHandler.HandleDelete).Methods(http.MethodDelete)
+
+	postHandler := assets.ImagePostHandler{FileSystemManager: fileSystemHandler}
+	router.HandleFunc(urlPrefix, postHandler.HandlePost).Methods(http.MethodPost)
 
 	serverHandler.UseHandler(router)
 

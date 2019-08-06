@@ -1,4 +1,4 @@
-package files
+package assets
 
 import (
 	"fmt"
@@ -65,7 +65,7 @@ func extractSizes(path string) (width, height int) {
 	return
 }
 
-func parseImagePath(path, assetsPath string) ImagePath {
+func parseImagePath(path string) ImagePath {
 	path = strings.Trim(path, "/")
 	pathItems := strings.Split(path, "/")
 	if len(pathItems) < 2 {
@@ -80,7 +80,6 @@ func parseImagePath(path, assetsPath string) ImagePath {
 
 		imageName, imageExt := parseImageName(pathItems[1])
 		return ImagePath{
-			assetsPath: assetsPath,
 			folderName: pathItems[0],
 			imageFile:  pathItems[1],
 			imageName:  imageName,
@@ -100,7 +99,6 @@ func parseImagePath(path, assetsPath string) ImagePath {
 	}
 
 	imagePath := ImagePath{
-		assetsPath: assetsPath,
 		folderName: pathItems[1],
 		imageFile:  pathItems[2],
 		imageName:  imageName,

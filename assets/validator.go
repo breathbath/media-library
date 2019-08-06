@@ -1,7 +1,8 @@
-package files
+package assets
 
 import (
 	"fmt"
+	error2 "github.com/breathbath/media-service/error"
 	"github.com/gabriel-vasile/mimetype"
 	"mime/multipart"
 	"strings"
@@ -12,11 +13,11 @@ func Validate(
 	file multipart.File,
 	submittedFileFieldName string,
 	maxUploadFileSizeMb int64,
-) (map[string][]string, error) {
-	errOutput := map[string][]string{}
+) (error2.ValidationErrors, error) {
+	validationErrors := error2.NewValidationErrors()
 	curMime, _, err := mimetype.DetectReader(file)
 	if err != nil {
-		return errOutput, err
+		return validationErrors, err
 	}
 
 	isCurMimeSupported := false
@@ -29,13 +30,13 @@ func Validate(
 	}
 
 	if !isCurMimeSupported {
-		errOutput[submittedFileFieldName] = []string{
+		validationErrors[submittedFileFieldName] = []string{
 			"Not supported image type, supported types are " + SUPPORTED_IMAGE_FORMATS,
 		}
 	}
 
 	if maxUploadFileSizeMb*1024*1024 < fileHeader.Size {
-		errOutput[submittedFileFieldName] = []string{
+		validationErrors[submittedFileFieldName] = []string{
 			fmt.Sprint(
 				"The file is too large (%d bytes). Allowed maximum size is %d Mb.",
 				fileHeader.Size,
@@ -44,5 +45,5 @@ func Validate(
 		}
 	}
 
-	return errOutput, nil
+	return validationErrors, nil
 }
