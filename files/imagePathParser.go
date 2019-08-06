@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-const SUPPORTED_IMAGE_FORMATS = "jpg|jpeg|png|gif"
-
 func isFolderValid(folderName string) bool {
 	r := regexp.MustCompile(`^\w+$`)
 	return r.MatchString(folderName)

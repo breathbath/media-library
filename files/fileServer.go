@@ -9,7 +9,14 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/gorilla/mux"
+	"image"
+	"image/gif"
+	"image/jpeg"
+	_ "image/jpeg"
+	"image/png"
+	_ "image/png"
 	io2 "io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,14 +24,59 @@ import (
 	"time"
 )
 
-const UNIQUE_FOLDER_ATTEMPTS_COUNT = 5
-
 type FileSystemManager struct {
 	assetsPath string
 }
 
 func NewFileSystemManager(assetsPath string) FileSystemManager {
 	return FileSystemManager{assetsPath: assetsPath}
+}
+
+func (nfs FileSystemManager) saveCompressedImageIfPossible(sourceFile multipart.File, targetFile io2.Writer, ext string) error {
+	_, err := sourceFile.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+
+	imgRcr, _, err := image.Decode(sourceFile)
+	if err != nil {
+		return err
+	}
+
+	resizeX, resizeY := 0, 0
+	bounds := imgRcr.Bounds()
+	if (bounds.Dy() > bounds.Dx() || bounds.Dy() == bounds.Dx()) && bounds.Dx() > VERT_MAX_IMAGE_WIDTH {
+		resizeX = VERT_MAX_IMAGE_WIDTH
+	} else if bounds.Dx() > bounds.Dy() && bounds.Dy() > HORIZ_MAX_IMAGE_HEIGHT {
+		resizeY = HORIZ_MAX_IMAGE_HEIGHT
+	}
+
+	if resizeX + resizeY > 0 {
+		imgRcr = imaging.Resize(imgRcr, resizeX, resizeY, imaging.Lanczos)
+	}
+
+	if ext == "jpg" || ext == "jpeg" {
+		jpegQuality := env.ReadEnvInt("COMPRESS_JPG_QUALITY", 85)
+		return jpeg.Encode(targetFile, imgRcr, &jpeg.Options{int(jpegQuality)})
+	}
+
+	if ext == "png" {
+		encoder := &png.Encoder{
+			CompressionLevel: png.BestSpeed,
+		}
+		return encoder.Encode(targetFile, imgRcr)
+	}
+
+	if ext == "gif" {
+		return gif.Encode(targetFile, imgRcr, &gif.Options{})
+	}
+
+	_, err = io2.Copy(targetFile, sourceFile)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (nfs FileSystemManager) HandlePost(rw http.ResponseWriter, r *http.Request) {
@@ -37,14 +89,15 @@ func (nfs FileSystemManager) HandlePost(rw http.ResponseWriter, r *http.Request)
 	}
 
 	maxUploadFileSizeMb := env.ReadEnvInt("MAX_UPLOADED_FILE_MB", 7)
-	err = r.ParseMultipartForm(maxUploadFileSizeMb << 20)
+	err = r.ParseMultipartForm(maxUploadFileSizeMb * 3 << 20)
 	if err != nil {
 		io.OutputError(err, "", "Multipart form parse failure")
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	uploadedFiles, ok := r.MultipartForm.File["files"]
+	submittedFileFieldName := "files"
+	uploadedFiles, ok := r.MultipartForm.File[submittedFileFieldName]
 	if !ok {
 		rw.WriteHeader(http.StatusBadRequest)
 		return
@@ -54,6 +107,8 @@ func (nfs FileSystemManager) HandlePost(rw http.ResponseWriter, r *http.Request)
 	filesToReturn := make([]string, 0, len(uploadedFiles))
 	for _, uploadedFileHeader := range uploadedFiles {
 		infile, err := uploadedFileHeader.Open()
+		defer infile.Close()
+
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
 			io.OutputError(err, "", "Uploaded source file opening failure")
@@ -61,6 +116,23 @@ func (nfs FileSystemManager) HandlePost(rw http.ResponseWriter, r *http.Request)
 		}
 
 		fileName := uploadedFileHeader.Filename
+
+		validationErrs, err := Validate(uploadedFileHeader, infile, submittedFileFieldName, maxUploadFileSizeMb)
+		if err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			io.OutputError(err, "", "Failed to detect mimetype and extension of uploaded file '%s'", fileName)
+			return
+		}
+
+		if len(validationErrs) > 0 {
+			rw.Header().Set("Content-Type", "application/json")
+			err = json.NewEncoder(rw).Encode(validationErrs)
+			if err != nil {
+				rw.WriteHeader(http.StatusInternalServerError)
+				io.OutputError(err, "", "Cannot send json data")
+			}
+			return
+		}
 
 		if filepath.Ext(fileName) == "" {
 			_, ext, err := mimetype.DetectReader(infile)
@@ -104,8 +176,9 @@ func (nfs FileSystemManager) HandlePost(rw http.ResponseWriter, r *http.Request)
 			io.OutputError(err, "", "Uploaded target file opening failure")
 			return
 		}
+		defer outfile.Close()
 
-		_, err = io2.Copy(outfile, infile)
+		err = nfs.saveCompressedImageIfPossible(infile, outfile, imgPath.imageExt)
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
 			io.OutputError(err, "", "Uploaded file copy failure")
@@ -113,6 +186,18 @@ func (nfs FileSystemManager) HandlePost(rw http.ResponseWriter, r *http.Request)
 		}
 
 		filesToReturn = append(filesToReturn, imgPath.folderName+"/"+imgPath.imageFile)
+	}
+
+	if len(filesToReturn) == 0 {
+		rw.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(rw).Encode(map[string][]string{
+			submittedFileFieldName: {"Should contain at least 1 element"},
+		})
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			io.OutputError(err, "", "Cannot send json data")
+		}
+		return
 	}
 
 	resp := struct {

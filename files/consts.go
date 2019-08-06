@@ -1,0 +1,6 @@
+package files
+
+const SUPPORTED_IMAGE_FORMATS = "jpg|jpeg|png|gif"
+const UNIQUE_FOLDER_ATTEMPTS_COUNT = 5
+const VERT_MAX_IMAGE_WIDTH=960
+const HORIZ_MAX_IMAGE_HEIGHT=960
