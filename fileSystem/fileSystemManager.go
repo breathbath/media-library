@@ -11,7 +11,7 @@ type FileSystemManager interface {
 	IsNonExistingPathError(err error) bool
 	IsNonResizedImageDirEmpty(imgPath ImagePath) (bool, error)
 	RemoveDir(imgPath ImagePath, isResizedDir bool) error
-	CreateNonResizedFileWriter(folderName, imageName string) (io.Writer, error)
+	CreateNonResizedFileWriter(folderName, imageName string) (io.WriteCloser, error)
 	FileExists(imgPath ImagePath, isResized bool) (bool, error)
 	CreateFileReader(imgPath ImagePath, isResized bool) (http.File, error)
 	OpenNonResizedImage(imgPath ImagePath) (image.Image, error)

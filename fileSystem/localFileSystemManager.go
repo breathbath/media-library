@@ -23,7 +23,7 @@ func (lfsm LocalFileSystemManager) RemoveNonResizedImage(imgPath ImagePath) erro
 	return os.Remove(nonResizedFilePath)
 }
 
-func (lfsm LocalFileSystemManager) CreateNonResizedFileWriter(folderName, imageName string) (io2.Writer, error) {
+func (lfsm LocalFileSystemManager) CreateNonResizedFileWriter(folderName, imageName string) (io2.WriteCloser, error) {
 	err := os.MkdirAll(filepath.Join(lfsm.AssetsPath, folderName), os.ModePerm)
 	if err != nil {
 		return nil, err

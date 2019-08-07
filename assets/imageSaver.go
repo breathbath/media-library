@@ -2,6 +2,7 @@ package assets
 
 import (
 	"github.com/breathbath/go_utils/utils/env"
+	io2 "github.com/breathbath/go_utils/utils/io"
 	"github.com/breathbath/media-service/fileSystem"
 	"github.com/disintegration/imaging"
 	"image"
@@ -20,6 +21,13 @@ type ImageSaver struct {
 
 func (is ImageSaver) SaveImage(sourceFile multipart.File, folderName, fileName string) error {
 	targetFile, err := is.FileSystemHandler.CreateNonResizedFileWriter(folderName, fileName)
+	defer func(){
+		err := targetFile.Close()
+		if err != nil {
+			io2.OutputError(err, "", "Failed to close file '%s'", fileName)
+		}
+	}()
+
 	if err != nil {
 		return err
 	}
