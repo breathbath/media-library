@@ -6,6 +6,7 @@ import (
 	"github.com/breathbath/go_utils/utils/env"
 	"github.com/breathbath/go_utils/utils/io"
 	error2 "github.com/breathbath/media-service/error"
+	"github.com/breathbath/media-service/fileSystem"
 	"github.com/gabriel-vasile/mimetype"
 	"mime/multipart"
 	"net/http"
@@ -49,7 +50,7 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	imgPath := &ImagePath{isValid: false}
+	imgPath := &fileSystem.ImagePath{IsValid: false}
 	filesToReturn := make([]string, 0, len(uploadedFiles))
 	validationErrors := error2.NewValidationErrors()
 	folderName := uniqid()
@@ -107,7 +108,7 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 
 func (iph ImagePostHandler) handleUploadedFile(
 	uploadedFileHeader *multipart.FileHeader,
-	imgPath *ImagePath,
+	imgPath *fileSystem.ImagePath,
 	maxUploadFileSizeMb int64,
 	folderName string,
 ) (error2.StatusError, []string) {
@@ -167,7 +168,7 @@ func (iph ImagePostHandler) handleUploadedFile(
 		}, filesToReturn
 	}
 
-	filesToReturn = append(filesToReturn, imgPath.folderName+"/"+imgPath.imageFile)
+	filesToReturn = append(filesToReturn, imgPath.FolderName+"/"+imgPath.ImageFile)
 
 	return error2.StatusError{}, filesToReturn
 }

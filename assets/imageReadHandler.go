@@ -17,11 +17,11 @@ func NewImageReadHandler(fileSystemManager fileSystem.FileSystemManager) ImageRe
 
 func (nfs ImageReadHandler) Open(path string) (http.File, error) {
 	imagePath := parseImagePath(path)
-	if !imagePath.isValid {
+	if !imagePath.IsValid {
 		return nil, nfs.createNonExistsError(path)
 	}
 
-	if imagePath.rawResizedFolder != "" {
+	if imagePath.RawResizedFolder != "" {
 		return nfs.handleResizedImage(imagePath)
 	}
 
@@ -32,80 +32,45 @@ func (nfs ImageReadHandler) createNonExistsError(path string) *os.PathError {
 	return &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
 }
 
-func (nfs ImageReadHandler) handleResizedImage(imagePath ImagePath) (http.File, error) {
-	resizedPath := imagePath.GetResizedImagePath()
-	info, err := os.Stat(resizedPath)
-	if os.IsNotExist(err) {
+func (nfs ImageReadHandler) handleResizedImage(imagePath fileSystem.ImagePath) (http.File, error) {
+	fileExists, err := nfs.fileSystemManager.FileExists(imagePath, true)
+	if err != nil {
+		return nil, err
+	}
+
+	if !fileExists {
 		f, err := nfs.generateResizedImage(imagePath)
 		return f, err
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	if info.IsDir() {
-		return nil, nfs.createNonExistsError(resizedPath)
-	}
-
-	f, err := os.Open(resizedPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return f, nil
+	return nfs.fileSystemManager.CreateFileReader(imagePath, true)
 }
 
-func (nfs ImageReadHandler) generateResizedImage(imagePath ImagePath) (http.File, error) {
-	resizedFolder := imagePath.GetResizedFolderPath()
-	resizedPath := imagePath.GetResizedImagePath()
-
-	err := os.MkdirAll(resizedFolder, os.ModePerm)
+func (nfs ImageReadHandler) generateResizedImage(imagePath fileSystem.ImagePath) (http.File, error) {
+	srcImage, err := nfs.fileSystemManager.OpenNonResizedImage(imagePath)
 	if err != nil {
 		return nil, err
 	}
 
-	nonResizedImagePath := imagePath.GetNonResizedImagePath()
-	_, err = os.Stat(nonResizedImagePath)
+	srcImage = imaging.Fill(srcImage, imagePath.Width, imagePath.Height, imaging.Center, imaging.Lanczos)
 
+	file, err := nfs.fileSystemManager.SaveResizedImage(imagePath, srcImage)
 	if err != nil {
 		return nil, err
 	}
 
-	src, err := imaging.Open(nonResizedImagePath)
-	if err != nil {
-		return nil, err
-	}
-
-	src = imaging.Fill(src, imagePath.width, imagePath.height, imaging.Center, imaging.Lanczos)
-
-	err = imaging.Save(src, resizedPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return os.Open(resizedPath)
+	return file, nil
 }
 
-func (nfs ImageReadHandler) handleNonResizedImage(imagePath ImagePath) (http.File, error) {
-	fullImagePath := imagePath.GetNonResizedImagePath()
-
-	info, err := os.Stat(fullImagePath)
-	if os.IsNotExist(err) {
-		return nil, nfs.createNonExistsError(fullImagePath)
-	}
+func (nfs ImageReadHandler) handleNonResizedImage(imagePath fileSystem.ImagePath) (http.File, error) {
+	fileExists, err := nfs.fileSystemManager.FileExists(imagePath, false)
 	if err != nil {
 		return nil, err
 	}
 
-	if info.IsDir() {
-		return nil, nfs.createNonExistsError(fullImagePath)
+	if !fileExists {
+		return nil, nfs.createNonExistsError(imagePath.ImageFile)
 	}
 
-	f, err := os.Open(fullImagePath)
-	if err != nil {
-		return nil, err
-	}
-
-	return f, nil
+	return nfs.fileSystemManager.CreateFileReader(imagePath, false)
 }

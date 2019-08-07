@@ -2,8 +2,10 @@ package fileSystem
 
 import (
 	"github.com/breathbath/go_utils/utils/io"
-	"github.com/breathbath/media-service/assets"
+	"github.com/disintegration/imaging"
+	"image"
 	io2 "io"
+	"net/http"
 	"os"
 	"path/filepath"
 )
@@ -16,7 +18,7 @@ func (lfsm LocalFileSystemManager) IsNonExistingPathError(err error) bool {
 	return os.IsNotExist(err)
 }
 
-func (lfsm LocalFileSystemManager) RemoveNonResizedImage(imgPath assets.ImagePath) error {
+func (lfsm LocalFileSystemManager) RemoveNonResizedImage(imgPath ImagePath) error {
 	nonResizedFilePath := imgPath.GetNonResizedImagePath()
 	return os.Remove(nonResizedFilePath)
 }
@@ -35,7 +37,22 @@ func (lfsm LocalFileSystemManager) CreateNonResizedFileWriter(folderName, imageN
 	return outfile, nil
 }
 
-func (lfsm LocalFileSystemManager) IsNonResizedImageDirEmpty(imgPath assets.ImagePath) (bool, error) {
+func (lfsm LocalFileSystemManager) SaveResizedImage(imgPath ImagePath, srcImage image.Image) (http.File, error) {
+	err := os.MkdirAll(filepath.Join(lfsm.AssetsPath, imgPath.GetResizedFolderPath()), os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+
+	resizedPath := imgPath.GetResizedImagePath()
+	err = imaging.Save(srcImage, resizedPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return os.Open(resizedPath)
+}
+
+func (lfsm LocalFileSystemManager) IsNonResizedImageDirEmpty(imgPath ImagePath) (bool, error) {
 	name := imgPath.GetNonResizedFolderPath()
 
 	f, err := os.Open(name)
@@ -59,7 +76,58 @@ func (lfsm LocalFileSystemManager) IsNonResizedImageDirEmpty(imgPath assets.Imag
 	return false, err
 }
 
-func (lfsm LocalFileSystemManager) RemoveDir(imgPath assets.ImagePath, isResizedDir bool) error {
+func (lfsm LocalFileSystemManager) FileExists(imgPath ImagePath, isResized bool) (bool, error) {
+	filePath := imgPath.GetNonResizedImagePath()
+	if isResized {
+		filePath = imgPath.GetResizedImagePath()
+	}
+
+	info, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	if info.IsDir() {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (lfsm LocalFileSystemManager) CreateFileReader(imgPath ImagePath, isResized bool) (http.File, error) {
+	filePath := imgPath.GetNonResizedImagePath()
+	if isResized {
+		filePath = imgPath.GetResizedImagePath()
+	}
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	return f, nil
+}
+
+func (lfsm LocalFileSystemManager) OpenNonResizedImage(imgPath ImagePath) (image.Image, error) {
+	nonResizedImagePath := filepath.Join(lfsm.AssetsPath, imgPath.FolderName, imgPath.ImageFile)
+	_, err := os.Stat(nonResizedImagePath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	src, err := imaging.Open(nonResizedImagePath)
+	if err != nil {
+		return nil, err
+	}
+
+	return src, nil
+}
+
+func (lfsm LocalFileSystemManager) RemoveDir(imgPath ImagePath, isResizedDir bool) error {
 	dirToDelete := imgPath.GetNonResizedFolderPath()
 	if isResizedDir {
 		dirToDelete = imgPath.GetResizedFolderPath()

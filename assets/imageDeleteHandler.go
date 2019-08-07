@@ -34,7 +34,7 @@ func (idh ImageDeleteHandler) HandleDelete(rw http.ResponseWriter, r *http.Reque
 	}
 
 	imagePath := parseImagePath(folder+"/"+imageName)
-	if !imagePath.isValid {
+	if !imagePath.IsValid {
 		rw.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -48,22 +48,22 @@ func (idh ImageDeleteHandler) HandleDelete(rw http.ResponseWriter, r *http.Reque
 		if idh.FileSystemManager.IsNonExistingPathError(nonResizedDeletionErr) {
 			status = http.StatusNotFound
 		} else {
-			io.OutputError(nonResizedDeletionErr, "", "Failed to delete non resized file '%s'", imagePath.imageFile)
+			io.OutputError(nonResizedDeletionErr, "", "Failed to delete non resized file '%s'", imagePath.ImageFile)
 		}
 	} else {
 		isDirEmpty, dirListingErr := idh.FileSystemManager.IsNonResizedImageDirEmpty(imagePath)
 		if dirListingErr != nil {
-			io.OutputError(dirListingErr, "", "Failed to list directory '%s'", imagePath.folderName)
+			io.OutputError(dirListingErr, "", "Failed to list directory '%s'", imagePath.FolderName)
 		} else if isDirEmpty {
 			nonResizedFolderDeletionErr := idh.FileSystemManager.RemoveDir(imagePath, false)
 			if nonResizedFolderDeletionErr != nil {
-				io.OutputError(nonResizedDeletionErr, "", "Failed to delete directory '%s'", imagePath.folderName)
+				io.OutputError(nonResizedDeletionErr, "", "Failed to delete directory '%s'", imagePath.FolderName)
 			}
 		}
 	}
 
 	if resizedFolderDeletionErr != nil {
-		io.OutputError(resizedFolderDeletionErr, "", "Failed to delete resized images folder '%s'", imagePath.folderName)
+		io.OutputError(resizedFolderDeletionErr, "", "Failed to delete resized images folder '%s'", imagePath.FolderName)
 		if status == http.StatusOK {
 			status = http.StatusInternalServerError
 		}

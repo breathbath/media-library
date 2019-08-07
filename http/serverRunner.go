@@ -49,18 +49,19 @@ func (sr ServerRunner) Run() (*http.Server, error) {
 
 	router := mux.NewRouter()
 
-	fileSystemManager := assets.NewImageReadHandler(assetsPath)
+	fileSystemHandler := fileSystem.LocalFileSystemManager{AssetsPath: assetsPath}
+
+	fileSystemManager := assets.NewImageReadHandler(fileSystemHandler)
 	fileServerHandler := http.FileServer(fileSystemManager)
 	router.PathPrefix(urlPrefix).Handler(http.StripPrefix(urlPrefix, fileServerHandler)).Methods(http.MethodGet)
-
-	fileSystemHandler := fileSystem.LocalFileSystemManager{AssetsPath: assetsPath}
 
 	imageDeleteHandler := assets.ImageDeleteHandler{
 		FileSystemManager: fileSystemHandler,
 	}
 	router.HandleFunc(strings.TrimRight(urlPrefix, "/") + "/{folder}/{image}", imageDeleteHandler.HandleDelete).Methods(http.MethodDelete)
 
-	postHandler := assets.ImagePostHandler{FileSystemManager: fileSystemHandler}
+	imageSaver := assets.ImageSaver{FileSystemHandler: fileSystemHandler}
+	postHandler := assets.ImagePostHandler{ImageSaver: imageSaver}
 	router.HandleFunc(urlPrefix, postHandler.HandlePost).Methods(http.MethodPost)
 
 	serverHandler.UseHandler(router)

@@ -3,6 +3,7 @@ package assets
 import (
 	"fmt"
 	"github.com/breathbath/go_utils/utils/io"
+	"github.com/breathbath/media-service/fileSystem"
 	"regexp"
 	"strconv"
 	"strings"
@@ -65,54 +66,54 @@ func extractSizes(path string) (width, height int) {
 	return
 }
 
-func parseImagePath(path string) ImagePath {
+func parseImagePath(path string) fileSystem.ImagePath {
 	path = strings.Trim(path, "/")
 	pathItems := strings.Split(path, "/")
 	if len(pathItems) < 2 {
-		return ImagePath{isValid: false}
+		return fileSystem.ImagePath{IsValid: false}
 	}
 
 	if len(pathItems) == 2 {
 		isValid := isFolderValid(pathItems[0])
 		if !isValid {
-			return ImagePath{isValid: false}
+			return fileSystem.ImagePath{IsValid: false}
 		}
 
 		imageName, imageExt := parseImageName(pathItems[1])
-		return ImagePath{
-			folderName: pathItems[0],
-			imageFile:  pathItems[1],
-			imageName:  imageName,
-			imageExt:   imageExt,
-			isValid:    imageName != "" && imageExt != "",
+		return fileSystem.ImagePath{
+			FolderName: pathItems[0],
+			ImageFile:  pathItems[1],
+			ImageName:  imageName,
+			ImageExt:   imageExt,
+			IsValid:    imageName != "" && imageExt != "",
 		}
 	}
 
 	isValid := isFolderValid(pathItems[1])
 	if !isValid {
-		return ImagePath{isValid: false}
+		return fileSystem.ImagePath{IsValid: false}
 	}
 
 	imageName, imageExt := parseImageName(pathItems[2])
 	if imageName == "" || imageExt == "" {
-		return ImagePath{isValid: false}
+		return fileSystem.ImagePath{IsValid: false}
 	}
 
-	imagePath := ImagePath{
-		folderName: pathItems[1],
-		imageFile:  pathItems[2],
-		imageName:  imageName,
-		imageExt:   imageExt,
+	imagePath := fileSystem.ImagePath{
+		FolderName: pathItems[1],
+		ImageFile:  pathItems[2],
+		ImageName:  imageName,
+		ImageExt:   imageExt,
 	}
 
-	imagePath.width, imagePath.height = extractSizes(pathItems[0])
-	if imagePath.width == 0 && imagePath.height == 0 {
-		imagePath.isValid = false
+	imagePath.Width, imagePath.Height = extractSizes(pathItems[0])
+	if imagePath.Width == 0 && imagePath.Height == 0 {
+		imagePath.IsValid = false
 		return imagePath
 	}
 
-	imagePath.rawResizedFolder = pathItems[0]
-	imagePath.isValid = true
+	imagePath.RawResizedFolder = pathItems[0]
+	imagePath.IsValid = true
 
 	return imagePath
 }
