@@ -78,3 +78,19 @@ func (tc *TestClient) MakePost(token, url string) (statusCode int, body string, 
 
 	return resp.StatusCode, string(respBody), nil
 }
+
+func (tc *TestClient) MakeDelete(token, url string) (statusCode int, err error) {
+	r, _ := http2.NewRequest("DELETE", url, &bytes.Buffer{})
+
+	if token != "" {
+		r.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	}
+
+	client := &http2.Client{}
+	resp, err := client.Do(r)
+	if err != nil {
+		return 0, err
+	}
+
+	return resp.StatusCode, nil
+}

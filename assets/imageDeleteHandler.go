@@ -33,39 +33,64 @@ func (idh ImageDeleteHandler) HandleDelete(rw http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	imagePath := parseImagePath(folder+"/"+imageName)
+	imagePath := parseImagePath(folder + "/" + imageName)
 	if !imagePath.IsValid {
 		rw.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	nonResizedDeletionErr := idh.FileSystemManager.RemoveNonResizedImage(imagePath)
-	resizedFolderDeletionErr := idh.FileSystemManager.RemoveDir(imagePath, true)
-
 	status := http.StatusOK
-
-	if nonResizedDeletionErr != nil {
-		if idh.FileSystemManager.IsNonExistingPathError(nonResizedDeletionErr) {
+	//removing non resized image e.g. /images/ldjfksljfas/someImage.png
+	nonResizedImageDeletionErr := idh.FileSystemManager.RemoveNonResizedImage(imagePath)
+	if nonResizedImageDeletionErr != nil {
+		if idh.FileSystemManager.IsNonExistingPathError(nonResizedImageDeletionErr) {
 			status = http.StatusNotFound
 		} else {
-			io.OutputError(nonResizedDeletionErr, "", "Failed to delete non resized file '%s'", imagePath.ImageFile)
+			io.OutputError(nonResizedImageDeletionErr, "", "Failed to delete non-resized file '%s'", imagePath.ImageFile)
 		}
-	} else {
-		isDirEmpty, dirListingErr := idh.FileSystemManager.IsNonResizedImageDirEmpty(imagePath)
-		if dirListingErr != nil {
-			io.OutputError(dirListingErr, "", "Failed to list directory '%s'", imagePath.FolderName)
-		} else if isDirEmpty {
-			nonResizedFolderDeletionErr := idh.FileSystemManager.RemoveDir(imagePath, false)
-			if nonResizedFolderDeletionErr != nil {
-				io.OutputError(nonResizedDeletionErr, "", "Failed to delete directory '%s'", imagePath.FolderName)
+	}
+
+	//removing resized folder e.g. /images/cache/resized_image/ldjfksljfas/someImage
+	resizedFolderDeletionErr := idh.FileSystemManager.RemoveDir(imagePath, true, false)
+	if resizedFolderDeletionErr != nil {
+		io.OutputError(resizedFolderDeletionErr, "", "Failed to delete resized folder for file '%s'", imagePath.ImageFile)
+		if status == http.StatusOK {
+			status = http.StatusInternalServerError
+		}
+	}
+
+	//check if /images/ldjfksljfas is empty (it could contain other images)
+	isDirEmpty, dirListingErr := idh.FileSystemManager.IsImageDirEmpty(imagePath, false)
+	//removing non resized folder e.g. /images/ldjfksljfas if it's empty (it could contain other images)
+	if dirListingErr != nil {
+		if status == http.StatusOK {
+			status = http.StatusInternalServerError
+		}
+		io.OutputError(dirListingErr, "", "Failed to list directory '%s'", imagePath.FolderName)
+	} else if isDirEmpty {
+		nonResizedFolderDeletionErr := idh.FileSystemManager.RemoveDir(imagePath, false, false)
+		if nonResizedFolderDeletionErr != nil {
+			io.OutputError(nonResizedFolderDeletionErr, "", "Failed to delete non-resized folder for file '%s'", imagePath.ImageFile)
+			if status == http.StatusOK {
+				status = http.StatusInternalServerError
 			}
 		}
 	}
 
-	if resizedFolderDeletionErr != nil {
-		io.OutputError(resizedFolderDeletionErr, "", "Failed to delete resized images folder '%s'", imagePath.FolderName)
+	//check if /images/cache/resized_image/ldjfksljfas is empty (it could contain other folders)
+	isDirEmpty, dirListingErr = idh.FileSystemManager.IsImageDirEmpty(imagePath, true)
+	if dirListingErr != nil {
 		if status == http.StatusOK {
 			status = http.StatusInternalServerError
+		}
+		io.OutputError(dirListingErr, "", "Failed to list resized directory '%s'", imagePath.FolderName)
+	} else if isDirEmpty {
+		nonResizedFolderDeletionErr := idh.FileSystemManager.RemoveDir(imagePath, true, true)
+		if nonResizedFolderDeletionErr != nil {
+			io.OutputError(nonResizedFolderDeletionErr, "", "Failed to delete resized parent folder for file '%s'", imagePath.ImageFile)
+			if status == http.StatusOK {
+				status = http.StatusInternalServerError
+			}
 		}
 	}
 

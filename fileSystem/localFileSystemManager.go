@@ -20,7 +20,7 @@ func (lfsm LocalFileSystemManager) IsNonExistingPathError(err error) bool {
 
 func (lfsm LocalFileSystemManager) RemoveNonResizedImage(imgPath ImagePath) error {
 	nonResizedFilePath := imgPath.GetNonResizedImagePath()
-	return os.Remove(nonResizedFilePath)
+	return os.Remove(filepath.Join(lfsm.AssetsPath, nonResizedFilePath))
 }
 
 func (lfsm LocalFileSystemManager) CreateNonResizedFileWriter(folderName, imageName string) (io2.WriteCloser, error) {
@@ -52,8 +52,11 @@ func (lfsm LocalFileSystemManager) SaveResizedImage(imgPath ImagePath, srcImage 
 	return os.Open(resizedPath)
 }
 
-func (lfsm LocalFileSystemManager) IsNonResizedImageDirEmpty(imgPath ImagePath) (bool, error) {
-	name := imgPath.GetNonResizedFolderPath()
+func (lfsm LocalFileSystemManager) IsImageDirEmpty(imgPath ImagePath, isResized bool) (bool, error) {
+	name := filepath.Join(lfsm.AssetsPath, imgPath.GetNonResizedFolderPath())
+	if isResized {
+		name = filepath.Join(lfsm.AssetsPath, imgPath.GetResizedParentFolderPath())
+	}
 
 	f, err := os.Open(name)
 	if err != nil {
@@ -66,7 +69,7 @@ func (lfsm LocalFileSystemManager) IsNonResizedImageDirEmpty(imgPath ImagePath) 
 		}
 	}()
 
-	// read in ONLY one file
+	// read in ONLY one file/subdir
 	_, err = f.Readdir(1)
 
 	// and if the file is EOF... well, the dir is empty.
@@ -127,10 +130,13 @@ func (lfsm LocalFileSystemManager) OpenNonResizedImage(imgPath ImagePath) (image
 	return src, nil
 }
 
-func (lfsm LocalFileSystemManager) RemoveDir(imgPath ImagePath, isResizedDir bool) error {
+func (lfsm LocalFileSystemManager) RemoveDir(imgPath ImagePath, isResizedDir, isResizedParentDir bool) error {
 	dirToDelete := imgPath.GetNonResizedFolderPath()
 	if isResizedDir {
 		dirToDelete = imgPath.GetResizedFolderPath()
 	}
-	return os.RemoveAll(dirToDelete)
+	if isResizedParentDir {
+		dirToDelete = imgPath.GetResizedParentFolderPath()
+	}
+	return os.RemoveAll(filepath.Join(lfsm.AssetsPath, dirToDelete))
 }

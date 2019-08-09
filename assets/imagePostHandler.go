@@ -35,8 +35,8 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	maxUploadFileSizeMb := env.ReadEnvInt("MAX_UPLOADED_FILE_MB", 7)
-	err = r.ParseMultipartForm(maxUploadFileSizeMb * 3 << 20)
+	maxUploadFileSizeMb := env.ReadEnvFloat("MAX_UPLOADED_FILE_MB", 7)
+	err = r.ParseMultipartForm(int64(maxUploadFileSizeMb) * 3 << 20)
 	if err != nil {
 		io.OutputError(err, "", "Multipart form parse failure")
 		rw.WriteHeader(http.StatusBadRequest)
@@ -68,6 +68,7 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 	}
 
 	if len(validationErrors) > 0 {
+		rw.WriteHeader(http.StatusBadRequest)
 		rw.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(rw).Encode(validationErrors)
 		if err != nil {
@@ -106,7 +107,7 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 
 func (iph ImagePostHandler) handleUploadedFile(
 	uploadedFileHeader *multipart.FileHeader,
-	maxUploadFileSizeMb int64,
+	maxUploadFileSizeMb float64,
 	folderName string,
 ) (error2.StatusError, []string) {
 	filesToReturn := []string{}

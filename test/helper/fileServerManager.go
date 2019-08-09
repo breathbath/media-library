@@ -25,6 +25,8 @@ func PrepareFileServer() error {
 		"TOKEN_ISSUER": "media-service-test",
 		"TOKEN_SECRET": "12345678",
 		"URL_PREFIX": "/images",
+		"MAX_UPLOADED_FILE_MB": "0.1",
+		"HORIZ_MAX_IMAGE_HEIGHT": "500",
 	})
 	if err != nil {
 		return err

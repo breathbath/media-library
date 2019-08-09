@@ -12,7 +12,7 @@ func Validate(
 	fileHeader *multipart.FileHeader,
 	file multipart.File,
 	submittedFileFieldName string,
-	maxUploadFileSizeMb int64,
+	maxUploadFileSizeMb float64,
 ) (error2.ValidationErrors, error) {
 	validationErrors := error2.NewValidationErrors()
 	curMime, _, err := mimetype.DetectReader(file)
@@ -31,14 +31,18 @@ func Validate(
 
 	if !isCurMimeSupported {
 		validationErrors[submittedFileFieldName] = []string{
-			"Not supported image type, supported types are " + SUPPORTED_IMAGE_FORMATS,
+			fmt.Sprintf(
+				"Not supported image type '%s', supported types are %s",
+				curMime,
+				SUPPORTED_IMAGE_FORMATS,
+			),
 		}
 	}
 
-	if maxUploadFileSizeMb*1024*1024 < fileHeader.Size {
+	if maxUploadFileSizeMb*1024.0*1024.0 < float64(fileHeader.Size) {
 		validationErrors[submittedFileFieldName] = []string{
-			fmt.Sprint(
-				"The file is too large (%d bytes). Allowed maximum size is %d Mb.",
+			fmt.Sprintf(
+				"The file is too large (%d bytes). Allowed maximum size is %v Mb",
 				fileHeader.Size,
 				maxUploadFileSizeMb,
 			),

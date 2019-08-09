@@ -22,6 +22,14 @@ func (ip ImagePath) GetResizedFolderPath() string { // /var/www/static_public_ht
 	)
 }
 
+func (ip ImagePath) GetResizedParentFolderPath() string { // /var/www/static_public_html/cache/resized_image/5d40a21343a5b
+	return filepath.Join(
+		"cache",
+		"resized_image",
+		ip.FolderName,
+	)
+}
+
 func (ip ImagePath) GetResizedImagePath() string { // /var/www/static_public_html/cache/resized_image/5d40a21343a5b/801934c74f7fad05aa50a81bffa25e2c/350x360.png
 	resizedImage := ip.RawResizedFolder + "." + ip.ImageExt
 
