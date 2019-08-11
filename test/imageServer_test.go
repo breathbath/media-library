@@ -2,6 +2,7 @@ package test
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"github.com/breathbath/go_utils/utils/errs"
@@ -21,7 +22,7 @@ type filesResponse struct {
 	FilesToReturn []string `json:"filepathes"`
 }
 
-func TestPostHandler(t *testing.T) {
+func TestHandlers(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
@@ -35,6 +36,10 @@ func TestPostHandler(t *testing.T) {
 	t.Run("testTooBigDimension", testTooBigDimension)
 	t.Run("testDelete", testDelete)
 	t.Run("testInvalidTokenForDeleting", testInvalidTokenForDeleting)
+	t.Run("testRead", testRead)
+	t.Run("testReadNonExistingImage", testReadNonExistingImage)
+	t.Run("testGettingResizedImage", testGettingResizedImage)
+	t.Run("testGettingCachedResizedImage", testGettingCachedResizedImage)
 }
 
 func testImageSaved(t *testing.T) {
@@ -181,10 +186,16 @@ func testInvalidTokenForDeleting(t *testing.T) {
 }
 
 func testDelete(t *testing.T) {
-	err := saveImage("lsls", "someImg.png")
+	err := saveImage("lsls", "someImg.png", "png", 10, 10)
 	assert.NoError(t, err)
 
-	err = saveImage(filepath.Join("cache", "resized_image", "lsls", "someImg"), "5x5.png")
+	err = saveImage(
+		filepath.Join("cache", "resized_image", "lsls", "someImg"),
+		"5x5.png",
+		"png",
+		5,
+		5,
+	)
 	assert.NoError(t, err)
 
 	testClient := helper.NewTestClient()
@@ -204,8 +215,132 @@ func testDelete(t *testing.T) {
 	assert.False(t, fs.FileExists(filepath.Join(helper.AssetsPath, "cache", "resized_image", "lsls")))
 }
 
-func saveImage(folderPath, imageName string) error {
-	img, err := helper.CreateImage(helper.ImageSpec{Format: "png", Width: 10, Height: 10})
+func testRead(t *testing.T) {
+	err := saveImage("imagesToRead", "someImg.png", "png", 50, 50)
+	assert.NoError(t, err)
+
+	f, err := os.Open(filepath.Join(helper.AssetsPath, "imagesToRead", "someImg.png"))
+	assert.NoError(t, err)
+	defer f.Close()
+
+	savedFileHash := md5.New()
+	_, err = io.Copy(savedFileHash, f)
+	assert.NoError(t, err)
+
+	testClient := helper.NewTestClient()
+	statusCode, body, err := testClient.MakeGet("http://localhost:9925/images/imagesToRead/someImg.png")
+	assert.NoError(t, err)
+	assert.Equal(t, http2.StatusOK, statusCode)
+
+	responseHash := md5.New()
+	_, err = io.WriteString(responseHash, body)
+	assert.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%x", savedFileHash.Sum(nil)), fmt.Sprintf("%x", responseHash.Sum(nil)))
+}
+
+func testGettingCachedResizedImage(t *testing.T) {
+	err := saveImage("imagesToResizeAndCache", "someImg.png", "png", 500, 250)
+	assert.NoError(t, err)
+
+	filePath := filepath.Join(
+		"cache",
+		"resized_image",
+		"imagesToResizeAndCache",
+		"someImg",
+	)
+
+	err = saveImage(filePath, "100x100.png", "png", 500, 250)
+	assert.NoError(t, err)
+
+	testClient := helper.NewTestClient()
+	statusCode, body, err := testClient.MakeGet(
+		"http://localhost:9925/images/100x100/imagesToResizeAndCache/someImg.png",
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http2.StatusOK, statusCode)
+
+	bodyBuffer := bytes.NewBuffer([]byte(body))
+	imgConfig, _, err := image.DecodeConfig(bodyBuffer)
+	assert.NoError(t, err)
+
+	//if we get an 100x100 image, it means the image was resized rather than using original cached 500x250 image
+	assert.Equal(t, 500, imgConfig.Width)
+	assert.Equal(t, 250, imgConfig.Height)
+}
+
+func testGettingResizedImage(t *testing.T) {
+	err := saveImage("imagesToResize", "someImg.png", "png", 500, 250)
+	assert.NoError(t, err)
+
+	testCases := []struct {
+		urlSize         string
+		resizedFileName string
+		expectedWidth   int
+		expectedHeight  int
+	}{
+		{
+			"100x",
+			"100x.png",
+			100,
+			0,
+		},
+		{
+			"x200",
+			"x200.png",
+			0,
+			200,
+		},
+		{
+			"300x150",
+			"300x150.png",
+			300,
+			150,
+		},
+	}
+
+	testClient := helper.NewTestClient()
+
+	for _, testCase := range testCases {
+		statusCode, body, err := testClient.MakeGet(
+			fmt.Sprintf("http://localhost:9925/images/%s/imagesToResize/someImg.png", testCase.urlSize),
+		)
+		assert.NoError(t, err)
+		assert.Equal(t, http2.StatusOK, statusCode)
+
+		filePath := filepath.Join(
+			helper.AssetsPath,
+			"cache",
+			"resized_image",
+			"imagesToResize",
+			"someImg",
+			testCase.resizedFileName,
+		)
+		assert.FileExists(t, filePath)
+
+		bodyBuffer := bytes.NewBuffer([]byte(body))
+		imgConfig, _, err := image.DecodeConfig(bodyBuffer)
+		assert.NoError(t, err)
+
+		if testCase.expectedWidth > 0 {
+			assert.Equal(t, testCase.expectedWidth, imgConfig.Width)
+		}
+		if testCase.expectedHeight > 0 {
+			assert.Equal(t, testCase.expectedHeight, imgConfig.Height)
+		}
+	}
+}
+
+func testReadNonExistingImage(t *testing.T) {
+	testClient := helper.NewTestClient()
+	statusCode, body, err := testClient.MakeGet("http://localhost:9925/images/nonExistingImg/someImg.png")
+	assert.NoError(t, err)
+	assert.Equal(t, http2.StatusNotFound, statusCode)
+	assert.Equal(t, "404 page not found\n", body)
+}
+
+func saveImage(folderPath, imageName, format string, width, height int) error {
+	img, err := helper.CreateImage(helper.ImageSpec{Format: format, Width: width, Height: height})
 	if err != nil {
 		return err
 	}

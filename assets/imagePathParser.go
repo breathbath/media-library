@@ -49,7 +49,7 @@ func extractSizes(path string) (width, height int) {
 
 	if matches[2] != "" {
 		r = regexp.MustCompile(`x(\d+)`)
-		matches2 := r.FindStringSubmatch(matches[1])
+		matches2 := r.FindStringSubmatch(matches[2])
 		height, e = strconv.Atoi(matches2[1])
 		if e != nil {
 			io.OutputError(e, "", "")
@@ -57,9 +57,9 @@ func extractSizes(path string) (width, height int) {
 		return
 	}
 
-	r = regexp.MustCompile(`x(\d+)`)
-	matches2 := r.FindStringSubmatch(matches[1])
-	height, e = strconv.Atoi(matches2[1])
+	r = regexp.MustCompile(`(\d+)x`)
+	matches2 := r.FindStringSubmatch(matches[3])
+	width, e = strconv.Atoi(matches2[1])
 	if e != nil {
 		io.OutputError(e, "", "")
 	}

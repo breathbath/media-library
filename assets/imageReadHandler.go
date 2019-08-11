@@ -3,6 +3,7 @@ package assets
 import (
 	"github.com/breathbath/media-service/fileSystem"
 	"github.com/disintegration/imaging"
+	"math"
 	"net/http"
 	"os"
 )
@@ -52,9 +53,24 @@ func (nfs ImageReadHandler) generateResizedImage(imagePath fileSystem.ImagePath)
 		return nil, err
 	}
 
-	srcImage = imaging.Fill(srcImage, imagePath.Width, imagePath.Height, imaging.Center, imaging.Lanczos)
+	if imagePath.Width == 0 {
+		srcBound := srcImage.Bounds()
+		srcW := srcBound.Dx()
+		srcH := srcBound.Dy()
+		tmpW := float64(imagePath.Height) * float64(srcW) / float64(srcH)
+		imagePath.Width = int(math.Max(1.0, math.Floor(tmpW+0.5)))
+	}
+	if imagePath.Height == 0 {
+		srcBound := srcImage.Bounds()
+		srcW := srcBound.Dx()
+		srcH := srcBound.Dy()
+		tmpH := float64(imagePath.Width) * float64(srcH) / float64(srcW)
+		imagePath.Height = int(math.Max(1.0, math.Floor(tmpH+0.5)))
+	}
 
-	file, err := nfs.fileSystemManager.SaveResizedImage(imagePath, srcImage)
+	targetImg := imaging.Thumbnail(srcImage, imagePath.Width, imagePath.Height, imaging.Lanczos)
+
+	file, err := nfs.fileSystemManager.SaveResizedImage(imagePath, targetImg)
 	if err != nil {
 		return nil, err
 	}

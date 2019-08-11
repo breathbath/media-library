@@ -94,3 +94,16 @@ func (tc *TestClient) MakeDelete(token, url string) (statusCode int, err error) 
 
 	return resp.StatusCode, nil
 }
+
+func (tc *TestClient) MakeGet(url string) (statusCode int, body string, err error) {
+	r, _ := http2.NewRequest("GET", url, &bytes.Buffer{})
+	client := &http2.Client{}
+	resp, err := client.Do(r)
+	if err != nil {
+		return 0, "", err
+	}
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	return resp.StatusCode, string(respBody), nil
+}

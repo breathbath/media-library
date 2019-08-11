@@ -43,7 +43,7 @@ func (lfsm LocalFileSystemManager) SaveResizedImage(imgPath ImagePath, srcImage 
 		return nil, err
 	}
 
-	resizedPath := imgPath.GetResizedImagePath()
+	resizedPath := filepath.Join(lfsm.AssetsPath, imgPath.GetResizedImagePath())
 	err = imaging.Save(srcImage, resizedPath)
 	if err != nil {
 		return nil, err
@@ -85,6 +85,8 @@ func (lfsm LocalFileSystemManager) FileExists(imgPath ImagePath, isResized bool)
 		filePath = imgPath.GetResizedImagePath()
 	}
 
+	filePath = filepath.Join(lfsm.AssetsPath, filePath)
+
 	info, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
 		return false, nil
@@ -105,6 +107,8 @@ func (lfsm LocalFileSystemManager) CreateFileReader(imgPath ImagePath, isResized
 	if isResized {
 		filePath = imgPath.GetResizedImagePath()
 	}
+
+	filePath = filepath.Join(lfsm.AssetsPath, filePath)
 
 	f, err := os.Open(filePath)
 	if err != nil {
