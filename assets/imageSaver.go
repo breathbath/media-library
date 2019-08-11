@@ -21,7 +21,7 @@ type ImageSaver struct {
 
 func (is ImageSaver) SaveImage(sourceFile multipart.File, folderName, fileName string) error {
 	targetFile, err := is.FileSystemHandler.CreateNonResizedFileWriter(folderName, fileName)
-	defer func(){
+	defer func() {
 		err := targetFile.Close()
 		if err != nil {
 			io2.OutputError(err, "", "Failed to close file '%s'", fileName)
@@ -74,7 +74,7 @@ func (is ImageSaver) SaveCompressedImageIfPossible(
 
 	if ext == "jpg" || ext == "jpeg" {
 		jpegQuality := env.ReadEnvInt("COMPRESS_JPG_QUALITY", 85)
-		return jpeg.Encode(targetFile, imgRcr, &jpeg.Options{int(jpegQuality)})
+		return jpeg.Encode(targetFile, imgRcr, &jpeg.Options{Quality: int(jpegQuality)})
 	}
 
 	if ext == "png" {

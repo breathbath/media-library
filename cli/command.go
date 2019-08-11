@@ -44,9 +44,10 @@ func Start() {
 		signal.Notify(stop, os.Interrupt, os.Kill)
 		<-stop
 
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
 		err = srv.Shutdown(ctx)
 		errs.FailOnError(err)
+		cancelFunc()
 
 		break
 	}
