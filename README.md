@@ -18,49 +18,65 @@ Media library has purpose to provide and manage in-house images over http(s). Cu
 The service is configurable with env variables:
 
 ### ASSETS_PATH
-Required
+
+_Required_
+
 File system path where to store the whole library payload
 
     ASSETS_PATH=/media/data/images
 
 ### HOST
-Required
+
+_Required_
+
 Host and port where to run the service:
 
     HOST=:9295
 
 ### TOKEN_ISSUER
-Required
+
+_Required_
+
 Jwt token issuer field to differentiate tokens for different environments
 
     TOKEN_ISSUER=production-media-service
 
 ### TOKEN_SECRET
-Required
+
+_Required_
+
 Password to deconde/encode the JWT token
 
     TOKEN_SECRET=dfasdfs
 
 ### URL_PREFIX
-Required
+
+_Required_
+
 All image urls will be prefix with URL_PREFIX. It's needed for the case where the same domain is used for both media library and other services.
 
     URL_PREFIX=/media/images/
 
 ### MAX_UPLOADED_FILE_MB
-Default 20, float
+
+_Default 20, float_
+
 Value to limit the max size of one uploaded file. All files over this size will be rejected.
 
     MAX_UPLOADED_FILE_MB=20
 
 ### COMPRESS_JPG_QUALITY
-Default 85, int
+
+_Default 85, int_
+
 Percent value which will be used to compress all posted jpeg images before saving.
 
     COMPRESS_JPG_QUALITY=85
     
 ### VERT_MAX_IMAGE_WIDTH
-Default 0, int
+
+_Default 0, int_
+
 Maximal width in pixels for images with a vertical orientation (where height > width). 
 If a vertical image with a larger width is posted, it will be resized to this width, height will be adjusted proportionally.
 The value is needed to spare disk space. Images with big dimensions will be automatically adjusted to the defined size.
@@ -69,7 +85,9 @@ The value is needed to spare disk space. Images with big dimensions will be auto
     
     
 ### HORIZ_MAX_IMAGE_HEIGHT
-Default 0, int
+
+_Default 0, int_
+
 Maximal height in pixels for images with a horizontal orientation (where width > height). 
 If a horizontal image with a larger height is posted, it will be resized to this height, width will be adjusted proportionally.
 The value is needed to spare disk space. Images with big dimensions will be automatically adjusted to the defined size.
@@ -82,7 +100,7 @@ The value is needed to spare disk space. Images with big dimensions will be auto
 
 ## To upload new image
     
-    curl -F 'files=@/Users/breathbath/Desktop/images/photo1@2x.jpg' -F 'files=@/Users/breathbath/Desktop/images/photo2@2x.jpg' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJtZWRpYV9zZXJ2aWNlIiwiZXhwIjoxNTY3NjMxNDQwLCJpYXQiOjE1NjUwMzk0NDAsImlzcyI6Im1lZGlhLXNlcnZpY2UtZGV2ZWxvcGVyIiwic3ViIjoibWVkaWEtc2VydmVyLWRldiJ9.2K1ueLVk_NrSNgViRl-AmeY-do3WLTFD1We1GiQlwrY' http://localhost:9295/media/images/
+    curl -F 'files=@/home/me/images/photo1@2x.jpg' -F 'files=@/home/me/images/photo2@2x.jpg' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJtZWRpYV9zZXJ2aWNlIiwiZXhwIjoxNTY3NjMxNDQwLCJpYXQiOjE1NjUwMzk0NDAsImlzcyI6Im1lZGlhLXNlcnZpY2UtZGV2ZWxvcGVyIiwic3ViIjoibWVkaWEtc2VydmVyLWRldiJ9.2K1ueLVk_NrSNgViRl-AmeY-do3WLTFD1We1GiQlwrY' http://localhost:9295/media/images/
     
 The response will be similar to this:
 
