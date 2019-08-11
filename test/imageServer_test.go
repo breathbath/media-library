@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/breathbath/go_utils/utils/errs"
 	"github.com/breathbath/go_utils/utils/fs"
-	"github.com/breathbath/media-service/test/helper"
+	"github.com/breathbath/media-library/test/helper"
 	"github.com/stretchr/testify/assert"
 	"image"
 	"io"

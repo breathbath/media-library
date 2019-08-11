@@ -3,7 +3,7 @@ package assets
 import (
 	"fmt"
 	"github.com/breathbath/go_utils/utils/io"
-	"github.com/breathbath/media-service/fileSystem"
+	"github.com/breathbath/media-library/fileSystem"
 	"regexp"
 	"strconv"
 	"strings"

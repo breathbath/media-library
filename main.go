@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/breathbath/media-service/cli"
+	"github.com/breathbath/media-library/cli"
 )
 
 func main() {

@@ -3,9 +3,9 @@ package http
 import (
 	"github.com/breathbath/go_utils/utils/env"
 	"github.com/breathbath/go_utils/utils/io"
-	"github.com/breathbath/media-service/assets"
-	"github.com/breathbath/media-service/authentication"
-	"github.com/breathbath/media-service/fileSystem"
+	"github.com/breathbath/media-library/assets"
+	"github.com/breathbath/media-library/authentication"
+	"github.com/breathbath/media-library/fileSystem"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"net/http"

@@ -3,7 +3,7 @@ package helper
 import (
 	"context"
 	"github.com/breathbath/go_utils/utils/errs"
-	"github.com/breathbath/media-service/http"
+	"github.com/breathbath/media-library/http"
 	http2 "net/http"
 	"os"
 )

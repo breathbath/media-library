@@ -2,7 +2,7 @@ package assets
 
 import (
 	"github.com/breathbath/go_utils/utils/io"
-	"github.com/breathbath/media-service/fileSystem"
+	"github.com/breathbath/media-library/fileSystem"
 	"github.com/gorilla/mux"
 	"net/http"
 )

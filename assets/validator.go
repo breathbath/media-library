@@ -2,7 +2,7 @@ package assets
 
 import (
 	"fmt"
-	error2 "github.com/breathbath/media-service/error"
+	error2 "github.com/breathbath/media-library/error"
 	"github.com/gabriel-vasile/mimetype"
 	"mime/multipart"
 	"strings"

@@ -1,4 +1,4 @@
-module github.com/breathbath/media-service
+module github.com/breathbath/media-library
 
 go 1.12
 

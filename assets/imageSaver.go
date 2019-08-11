@@ -3,7 +3,7 @@ package assets
 import (
 	"github.com/breathbath/go_utils/utils/env"
 	io2 "github.com/breathbath/go_utils/utils/io"
-	"github.com/breathbath/media-service/fileSystem"
+	"github.com/breathbath/media-library/fileSystem"
 	"github.com/disintegration/imaging"
 	"image"
 	"image/gif"

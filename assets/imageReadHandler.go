@@ -1,7 +1,7 @@
 package assets
 
 import (
-	"github.com/breathbath/media-service/fileSystem"
+	"github.com/breathbath/media-library/fileSystem"
 	"github.com/disintegration/imaging"
 	"math"
 	"net/http"

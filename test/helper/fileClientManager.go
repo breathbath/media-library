@@ -3,7 +3,7 @@ package helper
 import (
 	"bytes"
 	"fmt"
-	"github.com/breathbath/media-service/authentication"
+	"github.com/breathbath/media-library/authentication"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
