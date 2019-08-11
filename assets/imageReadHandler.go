@@ -1,19 +1,26 @@
 package assets
 
 import (
+	"fmt"
+	"github.com/breathbath/go_utils/utils/env"
 	"github.com/breathbath/media-library/fileSystem"
 	"github.com/disintegration/imaging"
 	"math"
 	"net/http"
 	"os"
+	"path/filepath"
 )
 
 type ImageReadHandler struct {
 	fileSystemManager fileSystem.FileSystemManager
+	proxyUrl          string
 }
 
 func NewImageReadHandler(fileSystemManager fileSystem.FileSystemManager) ImageReadHandler {
-	return ImageReadHandler{fileSystemManager: fileSystemManager}
+	return ImageReadHandler{
+		fileSystemManager: fileSystemManager,
+		proxyUrl:          env.ReadEnv("PROXY_URL", ""),
+	}
 }
 
 func (nfs ImageReadHandler) Open(path string) (http.File, error) {
@@ -34,14 +41,23 @@ func (nfs ImageReadHandler) createNonExistsError(path string) *os.PathError {
 }
 
 func (nfs ImageReadHandler) handleResizedImage(imagePath fileSystem.ImagePath) (http.File, error) {
-	fileExists, err := nfs.fileSystemManager.FileExists(imagePath, true)
+	resizedFileExists, err := nfs.fileSystemManager.FileExists(imagePath, true)
 	if err != nil {
 		return nil, err
 	}
 
-	if !fileExists {
-		f, err := nfs.generateResizedImage(imagePath)
-		return f, err
+	nonResizedFileExists, err := nfs.fileSystemManager.FileExists(imagePath, false)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resizedFileExists {
+		if nonResizedFileExists {
+			return nfs.generateResizedImage(imagePath)
+		}
+		if nfs.proxyUrl != "" {
+			return nfs.getProxyImage(imagePath)
+		}
 	}
 
 	return nfs.fileSystemManager.CreateFileReader(imagePath, true)
@@ -85,8 +101,31 @@ func (nfs ImageReadHandler) handleNonResizedImage(imagePath fileSystem.ImagePath
 	}
 
 	if !fileExists {
+		if nfs.proxyUrl != "" {
+			return nfs.getProxyImage(imagePath)
+		}
 		return nil, nfs.createNonExistsError(imagePath.ImageFile)
 	}
 
 	return nfs.fileSystemManager.CreateFileReader(imagePath, false)
+}
+
+func (nfs ImageReadHandler) getProxyImage(imagePath fileSystem.ImagePath) (http.File, error) {
+	if imagePath.RawResizedFolder == "" {
+		return DownloadFile(
+			fmt.Sprintf("%s/%s/%s", nfs.proxyUrl, imagePath.FolderName, imagePath.ImageFile),
+			filepath.Join(imagePath.FolderName, imagePath.ImageFile),
+		)
+	}
+
+	return DownloadFile(
+		fmt.Sprintf(
+			"%s/%s/%s/%s",
+			nfs.proxyUrl,
+			imagePath.RawResizedFolder,
+			imagePath.FolderName,
+			imagePath.ImageFile,
+		),
+		filepath.Join(imagePath.RawResizedFolder, imagePath.FolderName, imagePath.ImageFile),
+	)
 }

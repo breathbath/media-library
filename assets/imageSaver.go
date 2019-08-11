@@ -17,6 +17,17 @@ import (
 
 type ImageSaver struct {
 	FileSystemHandler fileSystem.FileSystemManager
+	vertMaxImageWidth, horizMaxImageHeight int64
+	jpegQuality int64
+}
+
+func NewImageSaver(fsHandler fileSystem.FileSystemManager) ImageSaver {
+	return ImageSaver{
+		FileSystemHandler: fsHandler,
+		vertMaxImageWidth: env.ReadEnvInt("VERT_MAX_IMAGE_WIDTH", 0),
+		horizMaxImageHeight: env.ReadEnvInt("HORIZ_MAX_IMAGE_HEIGHT", 0),
+		jpegQuality: env.ReadEnvInt("COMPRESS_JPG_QUALITY", 85),
+	}
 }
 
 func (is ImageSaver) SaveImage(sourceFile multipart.File, folderName, fileName string) error {
@@ -46,8 +57,6 @@ func (is ImageSaver) SaveCompressedImageIfPossible(
 	extWithDot string,
 ) error {
 	ext := strings.TrimLeft(extWithDot, ".")
-	vertMaxImageWidth := env.ReadEnvInt("VERT_MAX_IMAGE_WIDTH", 0)
-	horizMaxImageHeight := env.ReadEnvInt("HORIZ_MAX_IMAGE_HEIGHT", 0)
 	_, err := sourceFile.Seek(0, 0)
 	if err != nil {
 		return err
@@ -59,12 +68,12 @@ func (is ImageSaver) SaveCompressedImageIfPossible(
 	}
 
 	resizeX, resizeY := 0, 0
-	if vertMaxImageWidth+horizMaxImageHeight > 0 {
+	if is.vertMaxImageWidth+is.horizMaxImageHeight > 0 {
 		bounds := imgRcr.Bounds()
-		if (bounds.Dy() > bounds.Dx() || bounds.Dy() == bounds.Dx()) && bounds.Dx() > int(vertMaxImageWidth) {
-			resizeX = int(vertMaxImageWidth)
-		} else if bounds.Dx() > bounds.Dy() && bounds.Dy() > int(horizMaxImageHeight) {
-			resizeY = int(horizMaxImageHeight)
+		if (bounds.Dy() > bounds.Dx() || bounds.Dy() == bounds.Dx()) && bounds.Dx() > int(is.vertMaxImageWidth) {
+			resizeX = int(is.vertMaxImageWidth)
+		} else if bounds.Dx() > bounds.Dy() && bounds.Dy() > int(is.horizMaxImageHeight) {
+			resizeY = int(is.horizMaxImageHeight)
 		}
 	}
 
@@ -73,8 +82,7 @@ func (is ImageSaver) SaveCompressedImageIfPossible(
 	}
 
 	if ext == "jpg" || ext == "jpeg" {
-		jpegQuality := env.ReadEnvInt("COMPRESS_JPG_QUALITY", 85)
-		return jpeg.Encode(targetFile, imgRcr, &jpeg.Options{Quality: int(jpegQuality)})
+		return jpeg.Encode(targetFile, imgRcr, &jpeg.Options{Quality: int(is.jpegQuality)})
 	}
 
 	if ext == "png" {

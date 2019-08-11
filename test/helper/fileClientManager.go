@@ -74,6 +74,8 @@ func (tc *TestClient) MakePost(token, url string) (statusCode int, body string, 
 		return 0, "", err
 	}
 
+	defer resp.Body.Close()
+
 	respBody, err := ioutil.ReadAll(resp.Body)
 
 	return resp.StatusCode, string(respBody), nil
@@ -92,6 +94,8 @@ func (tc *TestClient) MakeDelete(token, url string) (statusCode int, err error) 
 		return 0, err
 	}
 
+	defer resp.Body.Close()
+
 	return resp.StatusCode, nil
 }
 
@@ -102,6 +106,8 @@ func (tc *TestClient) MakeGet(url string) (statusCode int, body string, err erro
 	if err != nil {
 		return 0, "", err
 	}
+
+	defer resp.Body.Close()
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 
