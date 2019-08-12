@@ -8,7 +8,6 @@ import (
 	"math"
 	"net/http"
 	"os"
-	"path/filepath"
 )
 
 type ImageReadHandler struct {
@@ -114,7 +113,7 @@ func (nfs ImageReadHandler) getProxyImage(imagePath fileSystem.ImagePath) (http.
 	if imagePath.RawResizedFolder == "" {
 		return DownloadFile(
 			fmt.Sprintf("%s/%s/%s", nfs.proxyUrl, imagePath.FolderName, imagePath.ImageFile),
-			filepath.Join(imagePath.FolderName, imagePath.ImageFile),
+			imagePath.ImageFile,
 		)
 	}
 
@@ -126,6 +125,6 @@ func (nfs ImageReadHandler) getProxyImage(imagePath fileSystem.ImagePath) (http.
 			imagePath.FolderName,
 			imagePath.ImageFile,
 		),
-		filepath.Join(imagePath.RawResizedFolder, imagePath.FolderName, imagePath.ImageFile),
+		imagePath.ImageFile,
 	)
 }

@@ -28,6 +28,11 @@ func DownloadFile(url, originalPath string) (http.File, error) {
 		return nil, &os.PathError{Op: "open", Path: originalPath, Err: os.ErrNotExist}
 	}
 
+	err = AppFs.MkdirAll("/tmp", os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+	
 	// Create the file
 	targetFile, err := AppFs.Create(filepath.Join("/tmp", originalPath))
 	if err != nil {

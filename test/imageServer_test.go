@@ -392,6 +392,7 @@ func testProxyMatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http2.StatusOK, statusCode)
 
+
 	assertSameImage(
 		t,
 		filepath.Join(helper.ProxyAssetsPath, "imageToProxy", "someImg.jpg"),
@@ -399,7 +400,7 @@ func testProxyMatch(t *testing.T) {
 	)
 
 	statusCodeResized, bodyResized, errResized := testClient.MakeGet(
-		"http://localhost:9925/10x10/images/imageToProxy/someImg.jpg",
+		"http://localhost:9925/images/10x10/imageToProxy/someImg.jpg",
 	)
 	assert.NoError(t, errResized)
 	assert.Equal(t, http2.StatusOK, statusCodeResized)
