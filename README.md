@@ -94,6 +94,13 @@ The value is needed to spare disk space. Images with big dimensions will be auto
 
     HORIZ_MAX_IMAGE_HEIGHT=600
 
+### PROXY_URL
+
+_Default '', string_
+
+If an image is not found in the local file system, it will be fetched from proxy url. If this option is empty, 404 will be returned.
+This option is useful when you have multiple envs but don't want to synchronize whole image set between them. Then you can use prod as proxy to serve images missing in your testing env.
+
 ## To start project with docker-compose
     
     docker-compose up -d

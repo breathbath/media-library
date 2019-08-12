@@ -8,42 +8,56 @@ import (
 	"os"
 )
 
-var srv *http2.Server
-const AssetsPath = "/tmp/assets"
+var srvs map[string]*http2.Server
+var assetsPaths []string
 
-func PrepareFileServer() error {
+func init() {
+	srvs = make(map[string]*http2.Server)
+	assetsPaths = []string{}
+}
+
+const AssetsPath = "/tmp/assets"
+const ProxyAssetsPath = "/tmp/proxy"
+
+func PrepareFileServer(name, assetsPath string, envs map[string]string) error {
 	var err error
 
-	err = os.MkdirAll(AssetsPath, os.ModePerm)
+	err = os.MkdirAll(assetsPath, os.ModePerm)
 	if err != nil {
 		return err
 	}
 
-	err = SetEnvs(map[string]string{
-		"ASSETS_PATH": AssetsPath,
-		"HOST": ":9925",
-		"TOKEN_ISSUER": "media-service-test",
-		"TOKEN_SECRET": "12345678",
-		"URL_PREFIX": "/images",
-		"MAX_UPLOADED_FILE_MB": "0.1",
-		"HORIZ_MAX_IMAGE_HEIGHT": "500",
-	})
+	err = SetEnvs(envs)
 	if err != nil {
 		return err
 	}
 
 	serverRunner := http.NewServerRunner()
-	srv, err = serverRunner.Run()
+	srvs[name], err = serverRunner.Run()
 	if err != nil {
 		return err
 	}
+
+	assetsPaths = append(assetsPaths, assetsPath)
+
 	return nil
 }
 
-func ShutdownFileServer() {
-	err := srv.Shutdown(context.Background())
-	errs.FailOnError(err)
+func ShutdownFileServers() {
+	errc := errs.NewErrorContainer()
+	for _, srv := range srvs {
+		err := srv.Shutdown(context.Background())
+		if err != nil {
+			errc.AddError(err)
+		}
+	}
+	errs.FailOnError(errc.Result(" "))
 
-	err = os.RemoveAll(AssetsPath)
-	errs.FailOnError(err)
+	for _, assetPath := range assetsPaths {
+		err := os.RemoveAll(assetPath)
+		if err != nil {
+			errc.AddError(err)
+		}
+	}
+	errs.FailOnError(errc.Result(" "))
 }

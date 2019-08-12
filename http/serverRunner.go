@@ -13,6 +13,9 @@ import (
 )
 
 type ServerRunner struct {
+	host string
+	assetsPath string
+	urlPrefix string
 }
 
 func NewServerRunner() ServerRunner {
@@ -60,8 +63,8 @@ func (sr ServerRunner) Run() (*http.Server, error) {
 	}
 	router.HandleFunc(strings.TrimRight(urlPrefix, "/") + "/{folder}/{image}", imageDeleteHandler.HandleDelete).Methods(http.MethodDelete)
 
-	imageSaver := assets.ImageSaver{FileSystemHandler: fileSystemHandler}
-	postHandler := assets.ImagePostHandler{ImageSaver: imageSaver}
+	imageSaver := assets.NewImageSaver(fileSystemHandler)
+	postHandler := assets.NewImagePostHandler(imageSaver)
 	router.HandleFunc(urlPrefix, postHandler.HandlePost).Methods(http.MethodPost)
 
 	serverHandler.UseHandler(router)

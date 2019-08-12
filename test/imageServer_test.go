@@ -40,6 +40,8 @@ func TestHandlers(t *testing.T) {
 	t.Run("testReadNonExistingImage", testReadNonExistingImage)
 	t.Run("testGettingResizedImage", testGettingResizedImage)
 	t.Run("testGettingCachedResizedImage", testGettingCachedResizedImage)
+
+	t.Run("testProxyMatch", testProxyMatch)
 }
 
 func testImageSaved(t *testing.T) {
@@ -186,10 +188,11 @@ func testInvalidTokenForDeleting(t *testing.T) {
 }
 
 func testDelete(t *testing.T) {
-	err := saveImage("lsls", "someImg.png", "png", 10, 10)
+	err := saveImage(helper.AssetsPath, "lsls", "someImg.png", "png", 10, 10)
 	assert.NoError(t, err)
 
 	err = saveImage(
+		helper.AssetsPath,
 		filepath.Join("cache", "resized_image", "lsls", "someImg"),
 		"5x5.png",
 		"png",
@@ -216,30 +219,55 @@ func testDelete(t *testing.T) {
 }
 
 func testRead(t *testing.T) {
-	err := saveImage("imagesToRead", "someImg.png", "png", 50, 50)
-	assert.NoError(t, err)
-
-	f, err := os.Open(filepath.Join(helper.AssetsPath, "imagesToRead", "someImg.png"))
-	assert.NoError(t, err)
-	defer f.Close()
-
-	savedFileHash := md5.New()
-	_, err = io.Copy(savedFileHash, f)
+	err := saveImage(
+		helper.AssetsPath,
+		"imagesToRead",
+		"someImg.png",
+		"png",
+		50,
+		50,
+	)
 	assert.NoError(t, err)
 
 	testClient := helper.NewTestClient()
 	statusCode, body, err := testClient.MakeGet("http://localhost:9925/images/imagesToRead/someImg.png")
 	assert.NoError(t, err)
 	assert.Equal(t, http2.StatusOK, statusCode)
+	assertSameImage(
+		t,
+		filepath.Join(helper.AssetsPath, "imagesToRead", "someImg.png"),
+		body,
+	)
+}
+
+func assertSameImage(t *testing.T, sourceImgPath string, body string) {
+	sourceFile, err := os.Open(sourceImgPath)
+	assert.NoError(t, err)
+	defer sourceFile.Close()
+
+	savedFileHash := md5.New()
+	_, err = io.Copy(savedFileHash, sourceFile)
+	assert.NoError(t, err)
 
 	responseHash := md5.New()
 	_, err = io.WriteString(responseHash, body)
 	assert.NoError(t, err)
-	assert.Equal(t, fmt.Sprintf("%x", savedFileHash.Sum(nil)), fmt.Sprintf("%x", responseHash.Sum(nil)))
+	assert.Equal(
+		t,
+		fmt.Sprintf("%x", savedFileHash.Sum(nil)),
+		fmt.Sprintf("%x", responseHash.Sum(nil)),
+	)
 }
 
 func testGettingCachedResizedImage(t *testing.T) {
-	err := saveImage("imagesToResizeAndCache", "someImg.png", "png", 500, 250)
+	err := saveImage(
+		helper.AssetsPath,
+		"imagesToResizeAndCache",
+		"someImg.png",
+		"png",
+		500,
+		250,
+	)
 	assert.NoError(t, err)
 
 	filePath := filepath.Join(
@@ -249,7 +277,7 @@ func testGettingCachedResizedImage(t *testing.T) {
 		"someImg",
 	)
 
-	err = saveImage(filePath, "100x100.png", "png", 500, 250)
+	err = saveImage(helper.AssetsPath, filePath, "100x100.png", "png", 500, 250)
 	assert.NoError(t, err)
 
 	testClient := helper.NewTestClient()
@@ -270,7 +298,14 @@ func testGettingCachedResizedImage(t *testing.T) {
 }
 
 func testGettingResizedImage(t *testing.T) {
-	err := saveImage("imagesToResize", "someImg.png", "png", 500, 250)
+	err := saveImage(
+		helper.AssetsPath,
+		"imagesToResize",
+		"someImg.png",
+		"png",
+		500,
+		250,
+	)
 	assert.NoError(t, err)
 
 	testCases := []struct {
@@ -331,6 +366,52 @@ func testGettingResizedImage(t *testing.T) {
 	}
 }
 
+func testProxyMatch(t *testing.T) {
+	err := saveImage(
+		helper.ProxyAssetsPath,
+		"imageToProxy",
+		"someImg.jpg",
+		"jpg",
+		50,
+		50,
+	)
+	assert.NoError(t, err)
+
+	err = saveImage(
+		helper.ProxyAssetsPath,
+		filepath.Join("cache", "resized_image", "imageToProxy", "someImg"),
+		"10x10.jpg",
+		"jpg",
+		10,
+		10,
+	)
+	assert.NoError(t, err)
+
+	testClient := helper.NewTestClient()
+	statusCode, body, err := testClient.MakeGet("http://localhost:9925/images/imageToProxy/someImg.jpg")
+	assert.NoError(t, err)
+	assert.Equal(t, http2.StatusOK, statusCode)
+
+
+	assertSameImage(
+		t,
+		filepath.Join(helper.ProxyAssetsPath, "imageToProxy", "someImg.jpg"),
+		body,
+	)
+
+	statusCodeResized, bodyResized, errResized := testClient.MakeGet(
+		"http://localhost:9925/images/10x10/imageToProxy/someImg.jpg",
+	)
+	assert.NoError(t, errResized)
+	assert.Equal(t, http2.StatusOK, statusCodeResized)
+
+	assertSameImage(
+		t,
+		filepath.Join(helper.ProxyAssetsPath, "cache", "resized_image", "imageToProxy", "someImg", "10x10.jpg"),
+		bodyResized,
+	)
+}
+
 func testReadNonExistingImage(t *testing.T) {
 	testClient := helper.NewTestClient()
 	statusCode, body, err := testClient.MakeGet("http://localhost:9925/images/nonExistingImg/someImg.png")
@@ -339,18 +420,18 @@ func testReadNonExistingImage(t *testing.T) {
 	assert.Equal(t, "404 page not found\n", body)
 }
 
-func saveImage(folderPath, imageName, format string, width, height int) error {
+func saveImage(rootPath, folderPath, imageName, format string, width, height int) error {
 	img, err := helper.CreateImage(helper.ImageSpec{Format: format, Width: width, Height: height})
 	if err != nil {
 		return err
 	}
 
-	err = os.MkdirAll(filepath.Join(helper.AssetsPath, folderPath), os.ModePerm)
+	err = os.MkdirAll(filepath.Join(rootPath, folderPath), os.ModePerm)
 	if err != nil {
 		return err
 	}
 
-	f, err := os.Create(filepath.Join(helper.AssetsPath, folderPath, imageName))
+	f, err := os.Create(filepath.Join(rootPath, folderPath, imageName))
 	if err != nil {
 		return err
 	}
@@ -390,10 +471,37 @@ func makeTestingPost(target interface{}, files ...helper.UploadedFile) (statusCo
 }
 
 func setup() {
-	err := helper.PrepareFileServer()
+	err := os.Setenv("PROXY_URL", "http://localhost:9926/images")
+	errs.FailOnError(err)
+
+	err = helper.PrepareFileServer(
+		"media",
+		helper.AssetsPath,
+		map[string]string{
+			"ASSETS_PATH":            helper.AssetsPath,
+			"HOST":                   ":9925",
+			"TOKEN_ISSUER":           "media-service-test",
+			"TOKEN_SECRET":           "12345678",
+			"URL_PREFIX":             "/images",
+			"MAX_UPLOADED_FILE_MB":   "0.1",
+			"HORIZ_MAX_IMAGE_HEIGHT": "500",
+		},
+	)
+	errs.FailOnError(err)
+
+	err = os.Unsetenv("PROXY_URL")
+	errs.FailOnError(err)
+	err = helper.PrepareFileServer(
+		"proxy",
+		helper.ProxyAssetsPath,
+		map[string]string{
+			"ASSETS_PATH": helper.ProxyAssetsPath,
+			"HOST":        ":9926",
+		},
+	)
 	errs.FailOnError(err)
 }
 
 func cleanup() {
-	helper.ShutdownFileServer()
+	helper.ShutdownFileServers()
 }

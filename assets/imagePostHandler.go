@@ -17,6 +17,7 @@ const SubmittedFileFieldName = "files"
 
 type ImagePostHandler struct {
 	ImageSaver ImageSaver
+	maxUploadFileSizeMb float64
 }
 
 func uniqid() string {
@@ -24,6 +25,13 @@ func uniqid() string {
 	sec := now.Unix()
 	usec := now.UnixNano() % 0x100000
 	return fmt.Sprintf("%08x%05x", sec, usec)
+}
+
+func NewImagePostHandler(imgSaver ImageSaver) ImagePostHandler {
+	return ImagePostHandler{
+		ImageSaver: imgSaver,
+		maxUploadFileSizeMb: env.ReadEnvFloat("MAX_UPLOADED_FILE_MB", 20),
+	}
 }
 
 func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) {
@@ -35,8 +43,7 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	maxUploadFileSizeMb := env.ReadEnvFloat("MAX_UPLOADED_FILE_MB", 7)
-	err = r.ParseMultipartForm(int64(maxUploadFileSizeMb) * 3 << 20)
+	err = r.ParseMultipartForm(int64(iph.maxUploadFileSizeMb) * 3 << 20)
 	if err != nil {
 		io.OutputError(err, "", "Multipart form parse failure")
 		rw.WriteHeader(http.StatusBadRequest)
@@ -53,7 +60,7 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 	validationErrors := error2.NewValidationErrors()
 	folderName := uniqid()
 	for _, uploadedFileHeader := range uploadedFiles {
-		statusErr, curFilesToReturn := iph.handleUploadedFile(uploadedFileHeader, maxUploadFileSizeMb, folderName)
+		statusErr, curFilesToReturn := iph.handleUploadedFile(uploadedFileHeader, iph.maxUploadFileSizeMb, folderName)
 		if statusErr.Error != nil {
 			rw.WriteHeader(statusErr.Status)
 			io.OutputError(statusErr.Error, "", statusErr.Text)
