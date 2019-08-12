@@ -12,6 +12,7 @@ Media library has purpose to provide and manage in-house images over http(s). Cu
 7. Dynamic images resizing for fixed width and height values or proportional rezising when one dimension is not specified.
 8. Caching of resized images
 9. Multi-file uploading with multipart form content
+10. Proxy support
 
 ## Configuration options
 
