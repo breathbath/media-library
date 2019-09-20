@@ -471,7 +471,7 @@ func makeTestingPost(target interface{}, files ...helper.UploadedFile) (statusCo
 }
 
 func setup() {
-	err := os.Setenv("PROXY_URL", "http://localhost:9926/images")
+	err := os.Setenv("PROXY_URL", "http://localhost:9926")
 	errs.FailOnError(err)
 
 	err = helper.PrepareFileServer(
