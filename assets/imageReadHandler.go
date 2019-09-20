@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strings"
 )
 
 type ImageReadHandler struct {
@@ -16,9 +17,17 @@ type ImageReadHandler struct {
 }
 
 func NewImageReadHandler(fileSystemManager fileSystem.FileSystemManager) ImageReadHandler {
+	proxyUrl := env.ReadEnv("PROXY_URL", "")
+	if proxyUrl != "" {
+		urlPrefix := env.ReadEnv("URL_PREFIX", "/media/images")
+		urlPrefix = strings.Trim(urlPrefix, "/")
+		proxyUrl = strings.TrimRight(proxyUrl, "/")
+		proxyUrl = proxyUrl + "/" + urlPrefix
+	}
+
 	return ImageReadHandler{
 		fileSystemManager: fileSystemManager,
-		proxyUrl:          env.ReadEnv("PROXY_URL", ""),
+		proxyUrl:          proxyUrl,
 	}
 }
 
