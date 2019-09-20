@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/afero"
 	"io"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"path/filepath"
 )
@@ -25,6 +26,12 @@ func DownloadFile(url, originalPath string) (http.File, error) {
 	}()
 
 	if resp.StatusCode < 199 || resp.StatusCode > 299 {
+		respBytes, err := httputil.DumpResponse(resp, true)
+		if err != nil {
+			io2.OutputError(err, "", "")
+		} else {
+			io2.OutputInfo("", "Proxy source returned response: %s", string(respBytes))
+		}
 		return nil, &os.PathError{Op: "open", Path: originalPath, Err: os.ErrNotExist}
 	}
 
