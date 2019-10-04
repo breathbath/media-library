@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const SubmittedFileFieldName = "files"
+const SubmittedFileFieldName = "files[]"
 
 type ImagePostHandler struct {
 	ImageSaver          ImageSaver
@@ -58,8 +58,7 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 		for submittedName, _ := range r.MultipartForm.File {
 			submittedNames += submittedName + ", "
 		}
-		io.OutputError(
-			err,
+		io.OutputWarning(
 			"",
 			"MultipartForm file field '%s' is not submitted, submitted fields list %s",
 			SubmittedFileFieldName,
