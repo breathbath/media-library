@@ -65,7 +65,8 @@ func (sr ServerRunner) Run() (*http.Server, error) {
 
 	imageSaver := assets.NewImageSaver(fileSystemHandler)
 	postHandler := assets.NewImagePostHandler(imageSaver)
-	router.HandleFunc(urlPrefix, postHandler.HandlePost).Methods(http.MethodPost)
+	router.HandleFunc(strings.TrimRight(urlPrefix, "/"), postHandler.HandlePost).Methods(http.MethodPost)
+	router.HandleFunc(strings.TrimRight(urlPrefix, "/") + "/", postHandler.HandlePost).Methods(http.MethodPost)
 
 	serverHandler.UseHandler(router)
 
