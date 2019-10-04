@@ -16,7 +16,7 @@ import (
 const SubmittedFileFieldName = "files"
 
 type ImagePostHandler struct {
-	ImageSaver ImageSaver
+	ImageSaver          ImageSaver
 	maxUploadFileSizeMb float64
 }
 
@@ -29,13 +29,15 @@ func uniqid() string {
 
 func NewImagePostHandler(imgSaver ImageSaver) ImagePostHandler {
 	return ImagePostHandler{
-		ImageSaver: imgSaver,
+		ImageSaver:          imgSaver,
 		maxUploadFileSizeMb: env.ReadEnvFloat("MAX_UPLOADED_FILE_MB", 20),
 	}
 }
 
 func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) {
 	var err error
+
+	rw.Header().Set("Content-Type", "application/json")
 
 	token := r.Context().Value("token")
 	if token == nil {
@@ -52,6 +54,18 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 
 	uploadedFiles, ok := r.MultipartForm.File[SubmittedFileFieldName]
 	if !ok {
+		submittedNames := ""
+		for submittedName, _ := range r.MultipartForm.File {
+			submittedNames += submittedName + ", "
+		}
+		io.OutputError(
+			err,
+			"",
+			"MultipartForm file field '%s' is not submitted, submitted fields list %s",
+			SubmittedFileFieldName,
+			submittedNames,
+		)
+
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -75,18 +89,26 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 	}
 
 	if len(validationErrors) > 0 {
+		body, err := json.Marshal(validationErrors)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			io.OutputError(err, "", "Cannot generate response for validation errors")
+			return
+		}
+		io.OutputError(fmt.Errorf("Validation errors for incoming file: %s", string(body)), "", "Validation failure")
 		rw.WriteHeader(http.StatusBadRequest)
-		rw.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(rw).Encode(validationErrors)
+		_, err = rw.Write(body)
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
 			io.OutputError(err, "", "Cannot send json data")
 		}
+
 		return
 	}
 
 	if len(filesToReturn) == 0 {
-		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		io.OutputWarning("","No files were submitted")
 		err = json.NewEncoder(rw).Encode(map[string][]string{
 			SubmittedFileFieldName: {"Should contain at least 1 element"},
 		})
@@ -103,7 +125,6 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 		FilesToReturn: filesToReturn,
 	}
 
-	rw.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(rw).Encode(resp)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
@@ -119,7 +140,12 @@ func (iph ImagePostHandler) handleUploadedFile(
 ) (error2.StatusError, []string) {
 	filesToReturn := []string{}
 	infile, err := uploadedFileHeader.Open()
-	defer infile.Close()
+	defer func() {
+		err = infile.Close()
+		if err != nil {
+			io.OutputError(err, "", "Failed to close input file")
+		}
+	}()
 
 	if err != nil {
 		return error2.StatusError{
@@ -142,8 +168,8 @@ func (iph ImagePostHandler) handleUploadedFile(
 
 	if len(validationErrs) > 0 {
 		return error2.StatusError{
-			Status: http.StatusBadRequest,
-			Error:  nil,
+			Status:         http.StatusBadRequest,
+			Error:          nil,
 			ValidationErrs: validationErrs,
 		}, filesToReturn
 	}
@@ -152,10 +178,10 @@ func (iph ImagePostHandler) handleUploadedFile(
 		_, ext, err := mimetype.DetectReader(infile)
 		if err != nil {
 			return error2.StatusError{
-				Status: http.StatusBadRequest,
-				Error:  err,
+				Status:         http.StatusBadRequest,
+				Error:          err,
 				ValidationErrs: validationErrs,
-				Text: fmt.Sprintf("Failed to detect mimetype and extension of uploaded file '%s'", fileName),
+				Text:           fmt.Sprintf("Failed to detect mimetype and extension of uploaded file '%s'", fileName),
 			}, filesToReturn
 		}
 		fileName += "." + ext
@@ -166,10 +192,10 @@ func (iph ImagePostHandler) handleUploadedFile(
 	err = iph.ImageSaver.SaveImage(infile, folderName, fileName)
 	if err != nil {
 		return error2.StatusError{
-			Status: http.StatusInternalServerError,
-			Error:  err,
+			Status:         http.StatusInternalServerError,
+			Error:          err,
 			ValidationErrs: validationErrs,
-			Text: "Folder generation failure",
+			Text:           "Folder generation failure",
 		}, filesToReturn
 	}
 
