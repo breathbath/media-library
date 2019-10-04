@@ -108,7 +108,7 @@ This option is useful when you have multiple envs but don't want to synchronize 
 
 ## To upload new image
     
-    curl -F 'files=@/home/me/images/photo1@2x.jpg' -F 'files[]=@/home/me/images/photo2@2x.jpg' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJtZWRpYV9zZXJ2aWNlIiwiZXhwIjoxNTY3NjMxNDQwLCJpYXQiOjE1NjUwMzk0NDAsImlzcyI6Im1lZGlhLXNlcnZpY2UtZGV2ZWxvcGVyIiwic3ViIjoibWVkaWEtc2VydmVyLWRldiJ9.2K1ueLVk_NrSNgViRl-AmeY-do3WLTFD1We1GiQlwrY' http://localhost:9295/media/images/
+    curl -F 'files[]=@/home/me/images/photo1@2x.jpg' -F 'files[]=@/home/me/images/photo2@2x.jpg' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJtZWRpYV9zZXJ2aWNlIiwiZXhwIjoxNTY3NjMxNDQwLCJpYXQiOjE1NjUwMzk0NDAsImlzcyI6Im1lZGlhLXNlcnZpY2UtZGV2ZWxvcGVyIiwic3ViIjoibWVkaWEtc2VydmVyLWRldiJ9.2K1ueLVk_NrSNgViRl-AmeY-do3WLTFD1We1GiQlwrY' http://localhost:9295/media/images/
     
 The response will be similar to this:
 
