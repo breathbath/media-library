@@ -55,12 +55,12 @@ func testImageSaved(t *testing.T) {
 	statusCode, err := makeTestingPost(
 		&filesResp,
 		helper.UploadedFile{
-			FieldName: "files",
+			FieldName: "files[]",
 			FileName:  "some Image.jpg",
 			File:      jpgImage,
 		},
 		helper.UploadedFile{
-			FieldName: "files",
+			FieldName: "files[]",
 			FileName:  "someImage.png",
 			File:      pngImage,
 		},
@@ -82,7 +82,7 @@ func testImageSaved(t *testing.T) {
 	statusCode2, err := makeTestingPost(
 		&filesResp2,
 		helper.UploadedFile{
-			FieldName: "files",
+			FieldName: "files[]",
 			FileName:  "someImage.png",
 			File:      pngImage2,
 		},
@@ -103,11 +103,11 @@ func testTooLargeFile(t *testing.T) {
 	bodyBytes, err := ioutil.ReadAll(img)
 	assert.NoError(t, err)
 
-	var filesError struct{ Files []string `json:"files"` }
+	var filesError struct{ Files []string `json:"files[]"` }
 	statusCode, err := makeTestingPost(
 		&filesError,
 		helper.UploadedFile{
-			FieldName: "files",
+			FieldName: "files[]",
 			FileName:  "someImage.png",
 			File:      ioutil.NopCloser(bytes.NewBuffer(bodyBytes)),
 		},
@@ -117,22 +117,24 @@ func testTooLargeFile(t *testing.T) {
 	assert.Equal(t, http2.StatusBadRequest, statusCode)
 	assert.Len(t, filesError.Files, 1)
 
-	expectedOutput := fmt.Sprintf(
-		"The file is too large (%d bytes). Allowed maximum size is %v Mb",
-		len(bodyBytes),
-		0.1,
-	)
-	assert.Equal(t, expectedOutput, filesError.Files[0])
+	if len(filesError.Files) > 0 {
+		expectedOutput := fmt.Sprintf(
+			"The file is too large (%d bytes). Allowed maximum size is %v Mb",
+			len(bodyBytes),
+			0.1,
+		)
+		assert.Equal(t, expectedOutput, filesError.Files[0])
+	}
 }
 
 func testWrongMime(t *testing.T) {
 	textReader := bytes.NewBuffer([]byte("some text"))
 
-	var filesError struct{ Files []string `json:"files"` }
+	var filesError struct{ Files []string `json:"files[]"` }
 	statusCode, err := makeTestingPost(
 		&filesError,
 		helper.UploadedFile{
-			FieldName: "files",
+			FieldName: "files[]",
 			FileName:  "someImage.png",
 			File:      textReader,
 		},
@@ -142,7 +144,9 @@ func testWrongMime(t *testing.T) {
 	assert.Equal(t, http2.StatusBadRequest, statusCode)
 	assert.Len(t, filesError.Files, 1)
 
-	assert.Equal(t, "Not supported image type 'text/plain', supported types are jpg|jpeg|png|gif", filesError.Files[0])
+	if len(filesError.Files) > 0 {
+		assert.Equal(t, "Not supported image type 'text/plain', supported types are jpg|jpeg|png|gif", filesError.Files[0])
+	}
 }
 
 func testTooBigDimension(t *testing.T) {
@@ -153,7 +157,7 @@ func testTooBigDimension(t *testing.T) {
 	statusCode, err := makeTestingPost(
 		&filesResp,
 		helper.UploadedFile{
-			FieldName: "files",
+			FieldName: "files[]",
 			FileName:  "someImage.jpg",
 			File:      img,
 		},
@@ -161,6 +165,11 @@ func testTooBigDimension(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http2.StatusOK, statusCode)
+	assert.Len(t, filesResp.FilesToReturn, 1)
+
+	if len(filesResp.FilesToReturn) == 0 {
+		return
+	}
 
 	filePath := filepath.Join(helper.AssetsPath, filesResp.FilesToReturn[0])
 
