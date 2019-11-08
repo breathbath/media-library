@@ -73,6 +73,13 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 	validationErrors := error2.NewValidationErrors()
 	folderName := uniqid()
 	for _, uploadedFileHeader := range uploadedFiles {
+		io.OutputInfo(
+			"",
+			"Got file to save: name: %s, size: %d bytes, header: %v",
+			uploadedFileHeader.Filename,
+			uploadedFileHeader.Size,
+			uploadedFileHeader.Header,
+		)
 		statusErr, curFilesToReturn := iph.handleUploadedFile(uploadedFileHeader, iph.maxUploadFileSizeMb, folderName)
 		if statusErr.Error != nil {
 			rw.WriteHeader(statusErr.Status)
@@ -107,7 +114,7 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 
 	if len(filesToReturn) == 0 {
 		rw.WriteHeader(http.StatusBadRequest)
-		io.OutputWarning("","No files were submitted")
+		io.OutputWarning("", "No files were submitted")
 		err = json.NewEncoder(rw).Encode(map[string][]string{
 			SubmittedFileFieldName: {"Should contain at least 1 element"},
 		})
@@ -155,8 +162,16 @@ func (iph ImagePostHandler) handleUploadedFile(
 	}
 
 	fileName := uploadedFileHeader.Filename
+	detectedMime, detectedExt, err := mimetype.DetectReader(infile)
+	if err != nil {
+		return error2.StatusError{
+			Status:         http.StatusBadRequest,
+			Error:          err,
+			Text:           fmt.Sprintf("Failed to detect mimetype and extension of uploaded file '%s'", fileName),
+		}, filesToReturn
+	}
 
-	validationErrs, err := Validate(uploadedFileHeader, infile, SubmittedFileFieldName, maxUploadFileSizeMb)
+	validationErrs, err := Validate(uploadedFileHeader, detectedMime, SubmittedFileFieldName, maxUploadFileSizeMb)
 	if err != nil {
 		return error2.StatusError{
 			Status: http.StatusBadRequest,
@@ -174,19 +189,16 @@ func (iph ImagePostHandler) handleUploadedFile(
 	}
 
 	if filepath.Ext(fileName) == "" {
-		_, ext, err := mimetype.DetectReader(infile)
-		if err != nil {
-			return error2.StatusError{
-				Status:         http.StatusBadRequest,
-				Error:          err,
-				ValidationErrs: validationErrs,
-				Text:           fmt.Sprintf("Failed to detect mimetype and extension of uploaded file '%s'", fileName),
-			}, filesToReturn
+		if detectedExt != "" {
+			fileName += "." + detectedExt
+			io.OutputInfo("", "Added extension to the file: %s", fileName)
+		} else {
+			io.OutputWarning("", "Was not able to detect file extension")
 		}
-		fileName += "." + ext
 	}
 
 	fileName = SanitizeImageName(fileName)
+	io.OutputInfo("", "File name after sanitizing: %s", fileName)
 
 	err = iph.ImageSaver.SaveImage(infile, folderName, fileName)
 	if err != nil {

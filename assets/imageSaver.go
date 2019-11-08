@@ -31,6 +31,7 @@ func NewImageSaver(fsHandler fileSystem.FileSystemManager) ImageSaver {
 }
 
 func (is ImageSaver) SaveImage(sourceFile multipart.File, folderName, fileName string) error {
+	io2.OutputInfo("", "Will save file %s in folder %s", fileName, folderName)
 	targetFile, err := is.FileSystemHandler.CreateNonResizedFileWriter(folderName, fileName)
 	defer func() {
 		err := targetFile.Close()
@@ -95,6 +96,8 @@ func (is ImageSaver) SaveCompressedImageIfPossible(
 	if ext == "gif" {
 		return gif.Encode(targetFile, imgRcr, &gif.Options{})
 	}
+
+	io2.OutputWarning("", "Unknown file extension %s, will just copy file", ext)
 
 	_, err = io.Copy(targetFile, sourceFile)
 	if err != nil {

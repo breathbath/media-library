@@ -3,22 +3,17 @@ package assets
 import (
 	"fmt"
 	error2 "github.com/breathbath/media-library/error"
-	"github.com/gabriel-vasile/mimetype"
 	"mime/multipart"
 	"strings"
 )
 
 func Validate(
 	fileHeader *multipart.FileHeader,
-	file multipart.File,
+	curMime string,
 	submittedFileFieldName string,
 	maxUploadFileSizeMb float64,
 ) (error2.ValidationErrors, error) {
 	validationErrors := error2.NewValidationErrors()
-	curMime, _, err := mimetype.DetectReader(file)
-	if err != nil {
-		return validationErrors, err
-	}
 
 	isCurMimeSupported := false
 	for _, supportedExt := range strings.Split(SUPPORTED_IMAGE_FORMATS, "|") {

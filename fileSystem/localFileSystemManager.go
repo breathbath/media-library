@@ -29,7 +29,9 @@ func (lfsm LocalFileSystemManager) CreateNonResizedFileWriter(folderName, imageN
 		return nil, err
 	}
 
-	outfile, err := os.Create(filepath.Join(lfsm.AssetsPath, folderName, imageName))
+	imgPath := filepath.Join(lfsm.AssetsPath, folderName, imageName)
+	io.OutputInfo("", "Will save image under '%s'", filepath.Join(lfsm.AssetsPath, folderName, imageName))
+	outfile, err := os.Create(imgPath)
 	if err != nil {
 		return nil, err
 	}

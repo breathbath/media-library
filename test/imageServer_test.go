@@ -33,6 +33,7 @@ func TestHandlers(t *testing.T) {
 	t.Run("testInvalidTokenForPosting", testInvalidTokenForPosting)
 	t.Run("testTooLargeFile", testTooLargeFile)
 	t.Run("testWrongMime", testWrongMime)
+	t.Run("testNoExtension", testNoExtension)
 	t.Run("testTooBigDimension", testTooBigDimension)
 	t.Run("testDelete", testDelete)
 	t.Run("testInvalidTokenForDeleting", testInvalidTokenForDeleting)
@@ -147,6 +148,38 @@ func testWrongMime(t *testing.T) {
 	if len(filesError.Files) > 0 {
 		assert.Equal(t, "Not supported image type 'text/plain', supported types are jpg|jpeg|png|gif", filesError.Files[0])
 	}
+}
+
+func testNoExtension(t *testing.T) {
+	jpgImage, err := helper.CreateImage(helper.ImageSpec{Format: "jpg"})
+	assert.NoError(t, err)
+
+	pngImage, err := helper.CreateImage(helper.ImageSpec{Format: "png"})
+	assert.NoError(t, err)
+
+	var filesResp filesResponse
+	statusCode, err := makeTestingPost(
+		&filesResp,
+		helper.UploadedFile{
+			FieldName: "files[]",
+			FileName:  "someJpgImg",
+			File:      jpgImage,
+		},
+		helper.UploadedFile{
+			FieldName: "files[]",
+			FileName:  "somePngImg",
+			File:      pngImage,
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http2.StatusOK, statusCode)
+	assert.Len(t, filesResp.FilesToReturn, 2)
+
+	assert.Regexp(t, `[\w]+/someJpgImg.jpg`, filesResp.FilesToReturn[0])
+	assert.FileExists(t, filepath.Join(helper.AssetsPath, filesResp.FilesToReturn[0]))
+
+	assert.Regexp(t, `[\w]+/somePngImg.png`, filesResp.FilesToReturn[1])
+	assert.FileExists(t, filepath.Join(helper.AssetsPath, filesResp.FilesToReturn[1]))
 }
 
 func testTooBigDimension(t *testing.T) {
