@@ -1,21 +1,19 @@
 package http
 
 import (
+	"net/http"
+	"strings"
+
 	"github.com/breathbath/go_utils/utils/env"
 	"github.com/breathbath/go_utils/utils/io"
 	"github.com/breathbath/media-library/assets"
 	"github.com/breathbath/media-library/authentication"
-	"github.com/breathbath/media-library/fileSystem"
+	"github.com/breathbath/media-library/filesystem"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
-	"net/http"
-	"strings"
 )
 
 type ServerRunner struct {
-	host string
-	assetsPath string
-	urlPrefix string
 }
 
 func NewServerRunner() ServerRunner {
@@ -52,7 +50,7 @@ func (sr ServerRunner) Run() (*http.Server, error) {
 
 	router := mux.NewRouter()
 
-	fileSystemHandler := fileSystem.LocalFileSystemManager{AssetsPath: assetsPath}
+	fileSystemHandler := filesystem.LocalFileSystemManager{AssetsPath: assetsPath}
 
 	fileSystemManager := assets.NewImageReadHandler(fileSystemHandler)
 	fileServerHandler := http.FileServer(fileSystemManager)
@@ -61,12 +59,12 @@ func (sr ServerRunner) Run() (*http.Server, error) {
 	imageDeleteHandler := assets.ImageDeleteHandler{
 		FileSystemManager: fileSystemHandler,
 	}
-	router.HandleFunc(strings.TrimRight(urlPrefix, "/") + "/{folder}/{image}", imageDeleteHandler.HandleDelete).Methods(http.MethodDelete)
+	router.HandleFunc(strings.TrimRight(urlPrefix, "/")+"/{folder}/{image}", imageDeleteHandler.HandleDelete).Methods(http.MethodDelete)
 
 	imageSaver := assets.NewImageSaver(fileSystemHandler)
 	postHandler := assets.NewImagePostHandler(imageSaver)
 	router.HandleFunc(strings.TrimRight(urlPrefix, "/"), postHandler.HandlePost).Methods(http.MethodPost)
-	router.HandleFunc(strings.TrimRight(urlPrefix, "/") + "/", postHandler.HandlePost).Methods(http.MethodPost)
+	router.HandleFunc(strings.TrimRight(urlPrefix, "/")+"/", postHandler.HandlePost).Methods(http.MethodPost)
 
 	serverHandler.UseHandler(router)
 
@@ -83,4 +81,3 @@ func (sr ServerRunner) Run() (*http.Server, error) {
 
 	return srv, nil
 }
-

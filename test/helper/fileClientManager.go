@@ -2,12 +2,14 @@ package helper
 
 import (
 	"bytes"
+	"context"
 	"fmt"
-	"github.com/breathbath/media-library/authentication"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
 	http2 "net/http"
+
+	"github.com/breathbath/media-library/authentication"
 )
 
 type TestClient struct {
@@ -59,7 +61,7 @@ func (tc *TestClient) GenerateValidToken() (string, error) {
 }
 
 func (tc *TestClient) MakePost(token, url string) (statusCode int, body string, err error) {
-	r, _ := http2.NewRequest("POST", url, tc.body)
+	r, _ := http2.NewRequestWithContext(context.Background(), "POST", url, tc.body)
 	if tc.contentType != "" {
 		r.Header.Add("Content-Type", tc.contentType)
 	}
@@ -82,7 +84,7 @@ func (tc *TestClient) MakePost(token, url string) (statusCode int, body string, 
 }
 
 func (tc *TestClient) MakeDelete(token, url string) (statusCode int, err error) {
-	r, _ := http2.NewRequest("DELETE", url, &bytes.Buffer{})
+	r, _ := http2.NewRequestWithContext(context.Background(), "DELETE", url, &bytes.Buffer{})
 
 	if token != "" {
 		r.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -100,7 +102,7 @@ func (tc *TestClient) MakeDelete(token, url string) (statusCode int, err error) 
 }
 
 func (tc *TestClient) MakeGet(url string) (statusCode int, body string, err error) {
-	r, _ := http2.NewRequest("GET", url, &bytes.Buffer{})
+	r, _ := http2.NewRequestWithContext(context.Background(), "GET", url, &bytes.Buffer{})
 	client := &http2.Client{}
 	resp, err := client.Do(r)
 	if err != nil {

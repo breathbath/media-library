@@ -2,9 +2,10 @@ package authentication
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/breathbath/go_utils/utils/env"
 	"github.com/golang-jwt/jwt/v4"
-	"time"
 )
 
 type JwtManager struct {
@@ -57,7 +58,7 @@ func (jwtm *JwtManager) ParseToken(rawToken string) (*jwt.Token, error) {
 	token, err := jwt.Parse(rawToken, func(token *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 
 		return []byte(jwtm.secret), nil

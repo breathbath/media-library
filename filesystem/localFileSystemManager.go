@@ -1,13 +1,14 @@
-package fileSystem
+package filesystem
 
 import (
-	"github.com/breathbath/go_utils/utils/io"
-	"github.com/disintegration/imaging"
 	"image"
 	io2 "io"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/breathbath/go_utils/utils/io"
+	"github.com/disintegration/imaging"
 )
 
 type LocalFileSystemManager struct {
@@ -18,7 +19,7 @@ func (lfsm LocalFileSystemManager) IsNonExistingPathError(err error) bool {
 	return os.IsNotExist(err)
 }
 
-func (lfsm LocalFileSystemManager) RemoveNonResizedImage(imgPath ImagePath) error {
+func (lfsm LocalFileSystemManager) RemoveNonResizedImage(imgPath *ImagePath) error {
 	nonResizedFilePath := imgPath.GetNonResizedImagePath()
 	return os.Remove(filepath.Join(lfsm.AssetsPath, nonResizedFilePath))
 }
@@ -39,7 +40,7 @@ func (lfsm LocalFileSystemManager) CreateNonResizedFileWriter(folderName, imageN
 	return outfile, nil
 }
 
-func (lfsm LocalFileSystemManager) SaveResizedImage(imgPath ImagePath, srcImage image.Image) (http.File, error) {
+func (lfsm LocalFileSystemManager) SaveResizedImage(imgPath *ImagePath, srcImage image.Image) (http.File, error) {
 	err := os.MkdirAll(filepath.Join(lfsm.AssetsPath, imgPath.GetResizedFolderPath()), os.ModePerm)
 	if err != nil {
 		return nil, err
@@ -54,7 +55,7 @@ func (lfsm LocalFileSystemManager) SaveResizedImage(imgPath ImagePath, srcImage 
 	return os.Open(resizedPath)
 }
 
-func (lfsm LocalFileSystemManager) IsImageDirEmpty(imgPath ImagePath, isResized bool) (bool, error) {
+func (lfsm LocalFileSystemManager) IsImageDirEmpty(imgPath *ImagePath, isResized bool) (bool, error) {
 	name := filepath.Join(lfsm.AssetsPath, imgPath.GetNonResizedFolderPath())
 	if isResized {
 		name = filepath.Join(lfsm.AssetsPath, imgPath.GetResizedParentFolderPath())
@@ -65,9 +66,9 @@ func (lfsm LocalFileSystemManager) IsImageDirEmpty(imgPath ImagePath, isResized 
 		return false, err
 	}
 	defer func() {
-		err := f.Close()
-		if err != nil {
-			io.OutputError(err, "", "Failed to close directory '%s'", name)
+		e := f.Close()
+		if e != nil {
+			io.OutputError(e, "", "Failed to close directory '%s'", name)
 		}
 	}()
 
@@ -81,7 +82,7 @@ func (lfsm LocalFileSystemManager) IsImageDirEmpty(imgPath ImagePath, isResized 
 	return false, err
 }
 
-func (lfsm LocalFileSystemManager) FileExists(imgPath ImagePath, isResized bool) (bool, error) {
+func (lfsm LocalFileSystemManager) FileExists(imgPath *ImagePath, isResized bool) (bool, error) {
 	filePath := imgPath.GetNonResizedImagePath()
 	if isResized {
 		filePath = imgPath.GetResizedImagePath()
@@ -104,7 +105,7 @@ func (lfsm LocalFileSystemManager) FileExists(imgPath ImagePath, isResized bool)
 	return true, nil
 }
 
-func (lfsm LocalFileSystemManager) CreateFileReader(imgPath ImagePath, isResized bool) (http.File, error) {
+func (lfsm LocalFileSystemManager) CreateFileReader(imgPath *ImagePath, isResized bool) (http.File, error) {
 	filePath := imgPath.GetNonResizedImagePath()
 	if isResized {
 		filePath = imgPath.GetResizedImagePath()
@@ -120,7 +121,7 @@ func (lfsm LocalFileSystemManager) CreateFileReader(imgPath ImagePath, isResized
 	return f, nil
 }
 
-func (lfsm LocalFileSystemManager) OpenNonResizedImage(imgPath ImagePath) (image.Image, error) {
+func (lfsm LocalFileSystemManager) OpenNonResizedImage(imgPath *ImagePath) (image.Image, error) {
 	nonResizedImagePath := filepath.Join(lfsm.AssetsPath, imgPath.FolderName, imgPath.ImageFile)
 	_, err := os.Stat(nonResizedImagePath)
 
@@ -136,7 +137,7 @@ func (lfsm LocalFileSystemManager) OpenNonResizedImage(imgPath ImagePath) (image
 	return src, nil
 }
 
-func (lfsm LocalFileSystemManager) RemoveDir(imgPath ImagePath, isResizedDir, isResizedParentDir bool) error {
+func (lfsm LocalFileSystemManager) RemoveDir(imgPath *ImagePath, isResizedDir, isResizedParentDir bool) error {
 	dirToDelete := imgPath.GetNonResizedFolderPath()
 	if isResizedDir {
 		dirToDelete = imgPath.GetResizedFolderPath()

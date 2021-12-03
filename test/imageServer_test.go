@@ -5,10 +5,6 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"github.com/breathbath/go_utils/utils/errs"
-	"github.com/breathbath/go_utils/utils/fs"
-	"github.com/breathbath/media-library/test/helper"
-	"github.com/stretchr/testify/assert"
 	"image"
 	"io"
 	"io/ioutil"
@@ -16,6 +12,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/breathbath/go_utils/utils/errs"
+	"github.com/breathbath/go_utils/utils/fs"
+	"github.com/breathbath/media-library/test/helper"
+	"github.com/stretchr/testify/assert"
 )
 
 type filesResponse struct {
@@ -93,7 +94,7 @@ func testImageSaved(t *testing.T) {
 	assert.Len(t, filesResp2.FilesToReturn, 1)
 	assert.FileExists(t, filepath.Join(helper.AssetsPath, filesResp2.FilesToReturn[0]))
 
-	//asserting that each upload saves files with same names to different locations
+	// asserting that each upload saves files with same names to different locations
 	assert.NotEqual(t, filesResp.FilesToReturn[1], filesResp2.FilesToReturn[0])
 }
 
@@ -104,7 +105,9 @@ func testTooLargeFile(t *testing.T) {
 	bodyBytes, err := ioutil.ReadAll(img)
 	assert.NoError(t, err)
 
-	var filesError struct{ Files []string `json:"files[]"` }
+	var filesError struct {
+		Files []string `json:"files[]"`
+	}
 	statusCode, err := makeTestingPost(
 		&filesError,
 		helper.UploadedFile{
@@ -131,7 +134,9 @@ func testTooLargeFile(t *testing.T) {
 func testWrongMime(t *testing.T) {
 	textReader := bytes.NewBuffer([]byte("some text"))
 
-	var filesError struct{ Files []string `json:"files[]"` }
+	var filesError struct {
+		Files []string `json:"files[]"`
+	}
 	statusCode, err := makeTestingPost(
 		&filesError,
 		helper.UploadedFile{
@@ -211,8 +216,8 @@ func testTooBigDimension(t *testing.T) {
 
 	imgConfig, _, err := image.DecodeConfig(file)
 	assert.NoError(t, err)
-	assert.Equal(t, 833, int(imgConfig.Width))
-	assert.Equal(t, 500, int(imgConfig.Height))
+	assert.Equal(t, 833, imgConfig.Width)
+	assert.Equal(t, 500, imgConfig.Height)
 }
 
 func testInvalidTokenForPosting(t *testing.T) {
@@ -282,7 +287,7 @@ func testRead(t *testing.T) {
 	)
 }
 
-func assertSameImage(t *testing.T, sourceImgPath string, body string) {
+func assertSameImage(t *testing.T, sourceImgPath, body string) {
 	sourceFile, err := os.Open(sourceImgPath)
 	assert.NoError(t, err)
 	defer sourceFile.Close()
@@ -334,7 +339,7 @@ func testGettingCachedResizedImage(t *testing.T) {
 	imgConfig, _, err := image.DecodeConfig(bodyBuffer)
 	assert.NoError(t, err)
 
-	//if we get an 100x100 image, it means the image was resized rather than using original cached 500x250 image
+	// if we get an 100x100 image, it means the image was resized rather than using original cached 500x250 image
 	assert.Equal(t, 500, imgConfig.Width)
 	assert.Equal(t, 250, imgConfig.Height)
 }
@@ -433,7 +438,6 @@ func testProxyMatch(t *testing.T) {
 	statusCode, body, err := testClient.MakeGet("http://localhost:9925/images/imageToProxy/someImg.jpg")
 	assert.NoError(t, err)
 	assert.Equal(t, http2.StatusOK, statusCode)
-
 
 	assertSameImage(
 		t,

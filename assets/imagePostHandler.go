@@ -3,14 +3,17 @@ package assets
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/breathbath/go_utils/utils/env"
-	"github.com/breathbath/go_utils/utils/io"
-	error2 "github.com/breathbath/media-library/error"
-	"github.com/gabriel-vasile/mimetype"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
 	"time"
+
+	"github.com/breathbath/media-library/authentication"
+
+	"github.com/breathbath/go_utils/utils/env"
+	"github.com/breathbath/go_utils/utils/io"
+	error2 "github.com/breathbath/media-library/error"
+	"github.com/gabriel-vasile/mimetype"
 )
 
 const SubmittedFileFieldName = "files[]"
@@ -34,18 +37,17 @@ func NewImagePostHandler(imgSaver ImageSaver) ImagePostHandler {
 	}
 }
 
-func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) {
-	var err error
-
+func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) { // nolint:funlen
 	rw.Header().Set("Content-Type", "application/json")
 
-	token := r.Context().Value("token")
+	token := r.Context().Value(authentication.TokenContextKey)
 	if token == nil {
 		rw.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	err = r.ParseMultipartForm(int64(iph.maxUploadFileSizeMb) * 3 << 20)
+	const twentyMb = 20
+	err := r.ParseMultipartForm(int64(iph.maxUploadFileSizeMb) * 3 << twentyMb)
 	if err != nil {
 		io.OutputError(err, "", "Multipart form parse failure")
 		rw.WriteHeader(http.StatusBadRequest)
@@ -55,9 +57,10 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 	uploadedFiles, ok := r.MultipartForm.File[SubmittedFileFieldName]
 	if !ok {
 		submittedNames := ""
-		for submittedName, _ := range r.MultipartForm.File {
+		for submittedName := range r.MultipartForm.File {
 			submittedNames += submittedName + ", "
 		}
+
 		io.OutputWarning(
 			"",
 			"MultipartForm file field '%s' is not submitted, submitted fields list %s",
@@ -95,18 +98,19 @@ func (iph ImagePostHandler) HandlePost(rw http.ResponseWriter, r *http.Request) 
 	}
 
 	if len(validationErrors) > 0 {
-		body, err := json.Marshal(validationErrors)
+		var body []byte
+		body, err = json.Marshal(validationErrors)
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
-			io.OutputError(err, "", "Cannot generate response for validation errors")
+			io.OutputError(err, "", "cannot generate response for validation errors")
 			return
 		}
-		io.OutputError(fmt.Errorf("Validation errors for incoming file: %s", string(body)), "", "Validation failure")
+		io.OutputError(fmt.Errorf("validation errors for incoming file: %s", string(body)), "", "Validation failure")
 		rw.WriteHeader(http.StatusBadRequest)
 		_, err = rw.Write(body)
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
-			io.OutputError(err, "", "Cannot send json data")
+			io.OutputError(err, "", "cannot send json data")
 		}
 
 		return
@@ -143,7 +147,7 @@ func (iph ImagePostHandler) handleUploadedFile(
 	uploadedFileHeader *multipart.FileHeader,
 	maxUploadFileSizeMb float64,
 	folderName string,
-) (error2.StatusError, []string) {
+) (statusErr error2.StatusError, files []string) {
 	filesToReturn := []string{}
 	infile, err := uploadedFileHeader.Open()
 	defer func() {
@@ -165,9 +169,9 @@ func (iph ImagePostHandler) handleUploadedFile(
 	detectedMime, detectedExt, err := mimetype.DetectReader(infile)
 	if err != nil {
 		return error2.StatusError{
-			Status:         http.StatusBadRequest,
-			Error:          err,
-			Text:           fmt.Sprintf("Failed to detect mimetype and extension of uploaded file '%s'", fileName),
+			Status: http.StatusBadRequest,
+			Error:  err,
+			Text:   fmt.Sprintf("Failed to detect mimetype and extension of uploaded file '%s'", fileName),
 		}, filesToReturn
 	}
 

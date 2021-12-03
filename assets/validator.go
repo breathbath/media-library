@@ -2,21 +2,21 @@ package assets
 
 import (
 	"fmt"
-	error2 "github.com/breathbath/media-library/error"
 	"mime/multipart"
 	"strings"
+
+	error2 "github.com/breathbath/media-library/error"
 )
 
 func Validate(
 	fileHeader *multipart.FileHeader,
-	curMime string,
-	submittedFileFieldName string,
+	curMime, submittedFileFieldName string,
 	maxUploadFileSizeMb float64,
 ) (error2.ValidationErrors, error) {
 	validationErrors := error2.NewValidationErrors()
 
 	isCurMimeSupported := false
-	for _, supportedExt := range strings.Split(SUPPORTED_IMAGE_FORMATS, "|") {
+	for _, supportedExt := range strings.Split(SupportedImageFormats, "|") {
 		supportedMime := "image/" + supportedExt
 		if curMime == supportedMime {
 			isCurMimeSupported = true
@@ -29,7 +29,7 @@ func Validate(
 			fmt.Sprintf(
 				"Not supported image type '%s', supported types are %s",
 				curMime,
-				SUPPORTED_IMAGE_FORMATS,
+				SupportedImageFormats,
 			),
 		}
 	}

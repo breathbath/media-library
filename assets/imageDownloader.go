@@ -1,32 +1,33 @@
 package assets
 
 import (
-	io2 "github.com/breathbath/go_utils/utils/io"
-	"github.com/spf13/afero"
 	"io"
 	"net/http"
 	"net/http/httputil"
 	"os"
 	"path/filepath"
+
+	io2 "github.com/breathbath/go_utils/utils/io"
+	"github.com/spf13/afero"
 )
 
 func DownloadFile(url, originalPath string) (http.File, error) {
 	var AppFs = afero.NewOsFs()
-	// Get the data
-	resp, err := http.Get(url)
+	resp, err := http.Get(url) // nolint: gosec, noctx
 	if err != nil {
 		return nil, err
 	}
 
-	defer func(){
-		err := resp.Body.Close()
-		if err != nil {
-			io2.OutputError(err, "", "")
+	defer func() {
+		e := resp.Body.Close()
+		if e != nil {
+			io2.OutputError(e, "", "")
 		}
 	}()
 
 	if resp.StatusCode < 199 || resp.StatusCode > 299 {
-		respBytes, err := httputil.DumpResponse(resp, true)
+		var respBytes []byte
+		respBytes, err = httputil.DumpResponse(resp, true)
 		if err != nil {
 			io2.OutputError(err, "", "")
 		} else {
@@ -39,9 +40,9 @@ func DownloadFile(url, originalPath string) (http.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Create the file
-	targetFile, err := AppFs.Create(filepath.Join("/tmp", originalPath))
+	targetFile, err := AppFs.Create("/" + filepath.Join("tmp", originalPath))
 	if err != nil {
 		return nil, err
 	}

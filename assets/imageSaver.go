@@ -1,42 +1,42 @@
 package assets
 
 import (
-	"github.com/breathbath/go_utils/utils/env"
-	io2 "github.com/breathbath/go_utils/utils/io"
-	"github.com/breathbath/media-library/fileSystem"
-	"github.com/disintegration/imaging"
 	"image"
 	"image/gif"
 	"image/jpeg"
 	"image/png"
 	"io"
-	"mime/multipart"
 	"path/filepath"
 	"strings"
+
+	"github.com/breathbath/go_utils/utils/env"
+	io2 "github.com/breathbath/go_utils/utils/io"
+	"github.com/breathbath/media-library/filesystem"
+	"github.com/disintegration/imaging"
 )
 
 type ImageSaver struct {
-	FileSystemHandler fileSystem.FileSystemManager
+	FileSystemHandler                      filesystem.Manager
 	vertMaxImageWidth, horizMaxImageHeight int64
-	jpegQuality int64
+	jpegQuality                            int64
 }
 
-func NewImageSaver(fsHandler fileSystem.FileSystemManager) ImageSaver {
+func NewImageSaver(fsHandler filesystem.Manager) ImageSaver {
 	return ImageSaver{
-		FileSystemHandler: fsHandler,
-		vertMaxImageWidth: env.ReadEnvInt("VERT_MAX_IMAGE_WIDTH", 0),
+		FileSystemHandler:   fsHandler,
+		vertMaxImageWidth:   env.ReadEnvInt("VERT_MAX_IMAGE_WIDTH", 0),
 		horizMaxImageHeight: env.ReadEnvInt("HORIZ_MAX_IMAGE_HEIGHT", 0),
-		jpegQuality: env.ReadEnvInt("COMPRESS_JPG_QUALITY", 85),
+		jpegQuality:         env.ReadEnvInt("COMPRESS_JPG_QUALITY", 85),
 	}
 }
 
-func (is ImageSaver) SaveImage(sourceFile multipart.File, folderName, fileName string) error {
+func (is ImageSaver) SaveImage(sourceFile io.ReadSeeker, folderName, fileName string) error {
 	io2.OutputInfo("", "Will save file %s in folder %s", fileName, folderName)
 	targetFile, err := is.FileSystemHandler.CreateNonResizedFileWriter(folderName, fileName)
 	defer func() {
-		err := targetFile.Close()
-		if err != nil {
-			io2.OutputError(err, "", "Failed to close file '%s'", fileName)
+		e := targetFile.Close()
+		if e != nil {
+			io2.OutputError(e, "", "Failed to close file '%s'", fileName)
 		}
 	}()
 
@@ -53,7 +53,7 @@ func (is ImageSaver) SaveImage(sourceFile multipart.File, folderName, fileName s
 }
 
 func (is ImageSaver) SaveCompressedImageIfPossible(
-	sourceFile multipart.File,
+	sourceFile io.ReadSeeker,
 	targetFile io.Writer,
 	extWithDot string,
 ) error {

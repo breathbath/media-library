@@ -2,12 +2,13 @@ package http
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/breathbath/go_utils/utils/io"
 	"github.com/codegangsta/negroni"
-	"net/http"
 )
 
-type PanicFormatter struct {}
+type PanicFormatter struct{}
 
 func (pf *PanicFormatter) FormatPanicError(rw http.ResponseWriter, r *http.Request, infos *negroni.PanicInformation) {
 	panicContext := infos.RecoveredPanic
@@ -17,7 +18,7 @@ func (pf *PanicFormatter) FormatPanicError(rw http.ResponseWriter, r *http.Reque
 		recoveredError = fmt.Errorf("%v", panicContext)
 	}
 
-	io.OutputError(recoveredError, "Http Error", "Unexpected panic error" )
+	io.OutputError(recoveredError, "Http Error", "Unexpected panic error")
 
 	rw.WriteHeader(http.StatusInternalServerError)
 }

@@ -2,12 +2,17 @@ package authentication
 
 import (
 	"context"
+	"net/http"
+	"strings"
+
 	"github.com/breathbath/go_utils/utils/env"
 	"github.com/breathbath/go_utils/utils/io"
 	"github.com/golang-jwt/jwt/v4"
-	"net/http"
-	"strings"
 )
+
+type ContextKey string
+
+const TokenContextKey ContextKey = "token"
 
 type AuthHandlerProvider struct {
 	jwtManager          *JwtManager
@@ -53,6 +58,6 @@ func (ahp *AuthHandlerProvider) AuthenticateClient(rw http.ResponseWriter, req *
 		return
 	}
 
-	ctx := context.WithValue(req.Context(), "token", token)
+	ctx := context.WithValue(req.Context(), TokenContextKey, token)
 	next(rw, req.WithContext(ctx))
 }

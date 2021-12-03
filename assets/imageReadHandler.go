@@ -2,32 +2,33 @@ package assets
 
 import (
 	"fmt"
-	"github.com/breathbath/go_utils/utils/env"
-	"github.com/breathbath/media-library/fileSystem"
-	"github.com/disintegration/imaging"
 	"math"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/breathbath/go_utils/utils/env"
+	"github.com/breathbath/media-library/filesystem"
+	"github.com/disintegration/imaging"
 )
 
 type ImageReadHandler struct {
-	fileSystemManager fileSystem.FileSystemManager
-	proxyUrl          string
+	fileSystemManager filesystem.Manager
+	proxyURL          string
 }
 
-func NewImageReadHandler(fileSystemManager fileSystem.FileSystemManager) ImageReadHandler {
-	proxyUrl := env.ReadEnv("PROXY_URL", "")
-	if proxyUrl != "" {
+func NewImageReadHandler(fileSystemManager filesystem.Manager) ImageReadHandler {
+	proxyURL := env.ReadEnv("PROXY_URL", "")
+	if proxyURL != "" {
 		urlPrefix := env.ReadEnv("URL_PREFIX", "/media/images")
 		urlPrefix = strings.Trim(urlPrefix, "/")
-		proxyUrl = strings.TrimRight(proxyUrl, "/")
-		proxyUrl = proxyUrl + "/" + urlPrefix
+		proxyURL = strings.TrimRight(proxyURL, "/")
+		proxyURL = proxyURL + "/" + urlPrefix
 	}
 
 	return ImageReadHandler{
 		fileSystemManager: fileSystemManager,
-		proxyUrl:          proxyUrl,
+		proxyURL:          proxyURL,
 	}
 }
 
@@ -48,7 +49,7 @@ func (nfs ImageReadHandler) createNonExistsError(path string) *os.PathError {
 	return &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
 }
 
-func (nfs ImageReadHandler) handleResizedImage(imagePath fileSystem.ImagePath) (http.File, error) {
+func (nfs ImageReadHandler) handleResizedImage(imagePath *filesystem.ImagePath) (http.File, error) {
 	resizedFileExists, err := nfs.fileSystemManager.FileExists(imagePath, true)
 	if err != nil {
 		return nil, err
@@ -63,7 +64,7 @@ func (nfs ImageReadHandler) handleResizedImage(imagePath fileSystem.ImagePath) (
 		if nonResizedFileExists {
 			return nfs.generateResizedImage(imagePath)
 		}
-		if nfs.proxyUrl != "" {
+		if nfs.proxyURL != "" {
 			return nfs.getProxyImage(imagePath)
 		}
 	}
@@ -71,25 +72,28 @@ func (nfs ImageReadHandler) handleResizedImage(imagePath fileSystem.ImagePath) (
 	return nfs.fileSystemManager.CreateFileReader(imagePath, true)
 }
 
-func (nfs ImageReadHandler) generateResizedImage(imagePath fileSystem.ImagePath) (http.File, error) {
+func (nfs ImageReadHandler) generateResizedImage(imagePath *filesystem.ImagePath) (http.File, error) {
 	srcImage, err := nfs.fileSystemManager.OpenNonResizedImage(imagePath)
 	if err != nil {
 		return nil, err
 	}
 
+	const half = 0.5
+	const MaxX = 1.0
 	if imagePath.Width == 0 {
 		srcBound := srcImage.Bounds()
 		srcW := srcBound.Dx()
 		srcH := srcBound.Dy()
 		tmpW := float64(imagePath.Height) * float64(srcW) / float64(srcH)
-		imagePath.Width = int(math.Max(1.0, math.Floor(tmpW+0.5)))
+		imagePath.Width = int(math.Max(MaxX, math.Floor(tmpW+half)))
 	}
+
 	if imagePath.Height == 0 {
 		srcBound := srcImage.Bounds()
 		srcW := srcBound.Dx()
 		srcH := srcBound.Dy()
 		tmpH := float64(imagePath.Width) * float64(srcH) / float64(srcW)
-		imagePath.Height = int(math.Max(1.0, math.Floor(tmpH+0.5)))
+		imagePath.Height = int(math.Max(MaxX, math.Floor(tmpH+half)))
 	}
 
 	targetImg := imaging.Thumbnail(srcImage, imagePath.Width, imagePath.Height, imaging.Lanczos)
@@ -102,14 +106,14 @@ func (nfs ImageReadHandler) generateResizedImage(imagePath fileSystem.ImagePath)
 	return file, nil
 }
 
-func (nfs ImageReadHandler) handleNonResizedImage(imagePath fileSystem.ImagePath) (http.File, error) {
+func (nfs ImageReadHandler) handleNonResizedImage(imagePath *filesystem.ImagePath) (http.File, error) {
 	fileExists, err := nfs.fileSystemManager.FileExists(imagePath, false)
 	if err != nil {
 		return nil, err
 	}
 
 	if !fileExists {
-		if nfs.proxyUrl != "" {
+		if nfs.proxyURL != "" {
 			return nfs.getProxyImage(imagePath)
 		}
 		return nil, nfs.createNonExistsError(imagePath.ImageFile)
@@ -118,10 +122,10 @@ func (nfs ImageReadHandler) handleNonResizedImage(imagePath fileSystem.ImagePath
 	return nfs.fileSystemManager.CreateFileReader(imagePath, false)
 }
 
-func (nfs ImageReadHandler) getProxyImage(imagePath fileSystem.ImagePath) (http.File, error) {
+func (nfs ImageReadHandler) getProxyImage(imagePath *filesystem.ImagePath) (http.File, error) {
 	if imagePath.RawResizedFolder == "" {
 		return DownloadFile(
-			fmt.Sprintf("%s/%s/%s", nfs.proxyUrl, imagePath.FolderName, imagePath.ImageFile),
+			fmt.Sprintf("%s/%s/%s", nfs.proxyURL, imagePath.FolderName, imagePath.ImageFile),
 			imagePath.ImageFile,
 		)
 	}
@@ -129,7 +133,7 @@ func (nfs ImageReadHandler) getProxyImage(imagePath fileSystem.ImagePath) (http.
 	return DownloadFile(
 		fmt.Sprintf(
 			"%s/%s/%s/%s",
-			nfs.proxyUrl,
+			nfs.proxyURL,
 			imagePath.RawResizedFolder,
 			imagePath.FolderName,
 			imagePath.ImageFile,
