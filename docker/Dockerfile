@@ -1,4 +1,4 @@
-FROM golang:1.12
+FROM golang:1.16
 RUN mkdir /mediaService
 WORKDIR /mediaService
 COPY go.mod .
