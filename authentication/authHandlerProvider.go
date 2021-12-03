@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/breathbath/go_utils/utils/env"
 	"github.com/breathbath/go_utils/utils/io"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v4"
 	"net/http"
 	"strings"
 )

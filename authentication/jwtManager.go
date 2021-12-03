@@ -3,7 +3,7 @@ package authentication
 import (
 	"fmt"
 	"github.com/breathbath/go_utils/utils/env"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v4"
 	"time"
 )
 

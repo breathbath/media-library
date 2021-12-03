@@ -7,9 +7,9 @@ require (
 	github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4 // indirect
 	github.com/breathbath/go_utils v0.0.0-20190211130746-62379d8df36c
 	github.com/codegangsta/negroni v1.0.0
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/disintegration/imaging v1.6.0
 	github.com/gabriel-vasile/mimetype v0.3.16
+	github.com/golang-jwt/jwt/v4 v4.1.0
 	github.com/gorilla/mux v1.7.0
 	github.com/spf13/afero v1.2.2
 	github.com/stretchr/testify v1.3.0
