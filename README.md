@@ -102,6 +102,11 @@ _Default '', string_
 If an image is not found in the local file system, it will be fetched from proxy url. If this option is empty, 404 will be returned.
 This option is useful when you have multiple envs but don't want to synchronize whole image set between them. Then you can use prod as proxy to serve images missing in your testing env.
 
+### TOKEN_DURATION_DAYS
+_Default 30, int_
+
+Access token validity in days
+
 ## To start project with docker-compose
     
     docker-compose up -d
